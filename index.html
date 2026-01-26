@@ -665,25 +665,24 @@
             cpCtx.clearRect(0, 0, 800, 800);
             const cx = 400, cy = 400;
             const globalPulse = 1 + Math.sin(t * 1.5) * 0.02;
-            const radius = 230 * globalPulse;
+            const radius = 320 * globalPulse; // Increased from 230
             const chaos = S.convi / 100;
 
             // --- TACTICAL GEARS (COUNTER-ROTATING RINGS) ---
             for (let i = 1; i <= 6; i++) {
                 const r = (radius / 6) * i;
-                const rot = i % 2 === 0 ? t * (0.2 + i * 0.05) : -t * (0.1 + i * 0.03);
+                const rot = i % 2 === 0 ? t * (0.15 + i * 0.04) : -t * (0.08 + i * 0.02);
 
                 cpCtx.save();
                 cpCtx.translate(cx, cy);
                 cpCtx.rotate(rot);
-                cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.05 + (i / 25)})`;
+                cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.04 + (i / 30)})`;
 
-                // Mechanical Notch Pattern (Gears)
                 if (i % 2 === 0) {
-                    cpCtx.setLineDash([5, 15]);
-                    cpCtx.lineWidth = 3;
+                    cpCtx.setLineDash([8, 20]);
+                    cpCtx.lineWidth = 2.5;
                 } else {
-                    cpCtx.setLineDash([20, 10]);
+                    cpCtx.setLineDash([30, 15]);
                     cpCtx.lineWidth = 1;
                 }
 
@@ -691,112 +690,104 @@
                 cpCtx.arc(0, 0, r, 0, Math.PI * 2);
                 cpCtx.stroke();
 
-                // Extra geometric details inside rings
-                if (i === 3 || i === 5) {
+                if (i === 4 || i === 6) {
                     cpCtx.beginPath();
-                    for (let h = 0; h < 6; h++) {
-                        const a = h * Math.PI * 2 / 6;
+                    for (let h = 0; h < 8; h++) {
+                        const a = h * Math.PI * 2 / 8;
                         h === 0 ? cpCtx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : cpCtx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
                     }
                     cpCtx.closePath();
-                    cpCtx.globalAlpha = 0.1;
+                    cpCtx.globalAlpha = 0.08;
                     cpCtx.stroke();
                 }
                 cpCtx.restore();
             }
             cpCtx.setLineDash([]);
 
-            // --- ANALYTIC SIDEBARS (INSIDE CANVAS) ---
+            // --- ANALYTIC SIDEBARS (EXPANDED POSITION) ---
             cpCtx.fillStyle = 'rgba(0, 255, 255, 0.4)';
             cpCtx.font = '7px Space Mono';
             cpCtx.textAlign = 'left';
 
-            // Left Telemetry
             const telemetry = [
                 `CHAOS_IDX: ${(chaos * 100).toFixed(2)}%`,
                 `VECT_STABILITY: ${(100 - chaos * 80).toFixed(1)}%`,
                 `SYNC_LATENCY: ${(15 + Math.sin(t * 10) * 5).toFixed(0)}ms`,
-                `ACTIVE_NODES: 08/08`,
-                `BUFFER_LOAD: ${(40 + Math.random() * 10).toFixed(1)}%`
+                `DATA_FIELD_EXP: ${(radius / 3.2).toFixed(1)}u`
             ];
-            telemetry.forEach((txt, i) => cpCtx.fillText(`> ${txt}`, cx - radius - 60, cy - radius + 100 + i * 12));
+            telemetry.forEach((txt, i) => cpCtx.fillText(`> ${txt}`, cx - radius - 50, cy - radius + 40 + i * 14));
 
-            // Right System State
             cpCtx.textAlign = 'right';
-            let sysState = chaos > 0.6 ? 'STORM_DETECTED' : (chaos > 0.3 ? 'DRIFT_ANALYSIS' : 'STABLE_FLUX');
-            cpCtx.fillText(`STATE: ${sysState}`, cx + radius + 60, cy - radius + 100);
-            cpCtx.fillText(`LOCK: ACTIVE_CORE_01`, cx + radius + 60, cy - radius + 112);
-            cpCtx.fillText(`REF: 2026.plasma.IO`, cx + radius + 60, cy - radius + 124);
+            let sysState = chaos > 0.6 ? 'ION_STORM_ALERT' : (chaos > 0.3 ? 'VECTOR_SHIFT' : 'NULL_STATE');
+            cpCtx.fillText(`CORE_LINK: STB_01`, cx + radius + 50, cy - radius + 40);
+            cpCtx.fillText(`MAP_RADIUS: ${radius.toFixed(0)}px`, cx + radius + 50, cy - radius + 54);
 
-            // --- ENERGY CORE RADIATOR ---
-            const count = 4;
-            for (let i = 0; i < count; i++) {
-                const life = (t * 0.5 + i / count) % 1;
+            // --- ENERGY RADIATOR ---
+            for (let i = 0; i < 4; i++) {
+                const life = (t * 0.4 + i / 4) % 1;
                 const r = life * radius;
-                cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.3 * (1 - life)})`;
+                cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.25 * (1 - life)})`;
                 cpCtx.beginPath();
                 cpCtx.arc(cx, cy, r, 0, Math.PI * 2);
                 cpCtx.stroke();
             }
 
-            // --- PERIMETER KINETICS & ANGLE DATA ---
+            // --- PERIMETER KINETICS (WIDE) ---
             cpCtx.save();
             cpCtx.translate(cx, cy);
-            cpCtx.rotate(t * 0.1);
-            for (let a = 0; a < 360; a += 10) {
+            cpCtx.rotate(t * 0.05);
+            for (let a = 0; a < 360; a += 15) {
                 const ang = a * Math.PI / 180;
-                const len = a % 90 === 0 ? 15 : 5;
+                const len = a % 90 === 0 ? 20 : 8;
                 cpCtx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
                 cpCtx.beginPath();
-                cpCtx.moveTo(Math.cos(ang) * (radius + 10), Math.sin(ang) * (radius + 10));
-                cpCtx.lineTo(Math.cos(ang) * (radius + 10 + len), Math.sin(ang) * (radius + 10 + len));
+                cpCtx.moveTo(Math.cos(ang) * (radius + 5), Math.sin(ang) * (radius + 5));
+                cpCtx.lineTo(Math.cos(ang) * (radius + 5 + len), Math.sin(ang) * (radius + 5 + len));
                 cpCtx.stroke();
+
                 if (a % 30 === 0) {
                     cpCtx.fillStyle = '#0ff';
                     cpCtx.font = '6px Space Mono';
                     cpCtx.fillText(a + '°', Math.cos(ang) * (radius + 30), Math.sin(ang) * (radius + 30));
                 }
-                // Analytical bitstips on perimeter
-                if (a % 20 === 0 && Math.random() < 0.3) {
-                    cpCtx.fillStyle = 'rgba(0, 255, 255, 0.1)';
-                    cpCtx.fillRect(Math.cos(ang) * (radius + 50), Math.sin(ang) * (radius + 50), 2, 8);
-                }
             }
             cpCtx.restore();
 
-            // --- DATA POINTS & DETAILED ANALYTICS ---
+            // --- DATA POINTS & EXPANDED MAPPING ---
             const points = configs.map((c, i) => {
                 const angle = (i * Math.PI * 2 / 8) + t * 0.08;
                 const val = S[c.k] || 0;
                 const n = Math.min(1, Math.abs(val) / c.m);
-                const r = (n * radius);
+                // Expand mapping logic: r starts further out and grows larger
+                const r = (n * radius * 0.7) + (radius * 0.3);
                 return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r, color: c.c, norm: n, label: c.k.toUpperCase(), ang: angle, r: r, val: val };
             });
 
             // Energy Web (Mesh)
             cpCtx.beginPath();
+            cpCtx.setLineDash([2, 4]);
             cpCtx.lineWidth = 1;
-            cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.1 + chaos * 0.5})`;
+            cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.15 + chaos * 0.4})`;
             points.forEach((p, i) => { i === 0 ? cpCtx.moveTo(p.x, p.y) : cpCtx.lineTo(p.x, p.y); });
             cpCtx.closePath();
             cpCtx.stroke();
+            cpCtx.setLineDash([]);
 
-            // DATA FLOW & POINT DETAILS
+            // DATA FLOW
             points.forEach((p, i) => {
-                // Flowing particles
-                const pc = 3;
+                const pc = 4;
                 for (let j = 0; j < pc; j++) {
-                    const pLife = (t * (0.4 + p.norm) + j / pc) % 1;
-                    const px = cx + Math.cos(p.ang) * (pLife * p.r);
-                    const py = cy + Math.sin(p.ang) * (pLife * p.r);
+                    const pLife = (t * (0.3 + p.norm) + j / pc) % 1;
+                    const pr = (radius * 0.3) + (pLife * (p.r - radius * 0.3));
+                    const px = cx + Math.cos(p.ang) * pr;
+                    const py = cy + Math.sin(p.ang) * pr;
                     cpCtx.fillStyle = p.color;
                     cpCtx.globalAlpha = 0.3 * (1 - pLife);
                     cpCtx.beginPath();
-                    cpCtx.arc(px, py, 1.5, 0, 6.28);
+                    cpCtx.arc(px, py, 1.2, 0, 6.28);
                     cpCtx.fill();
                 }
 
-                // Digital Marker (+)
                 cpCtx.strokeStyle = p.color;
                 cpCtx.lineWidth = 2;
                 cpCtx.globalAlpha = 1.0;
@@ -806,59 +797,36 @@
                 cpCtx.moveTo(p.x, p.y - s); cpCtx.lineTo(p.x, p.y + s);
                 cpCtx.stroke();
 
-                // Detailed HUD Popup
                 cpCtx.fillStyle = '#fff';
                 cpCtx.font = 'bold 7px Space Mono';
                 cpCtx.textAlign = 'left';
-                cpCtx.fillText(`ID:[${p.label}]`, p.x + 10, p.y - 14);
-                cpCtx.fillText(`CUR:${p.val.toFixed(1)}`, p.x + 10, p.y - 6);
-                cpCtx.fillText(`MAG:${Math.round(p.norm * 100)}%`, p.x + 10, p.y + 2);
+                cpCtx.fillText(`[${p.label}]`, p.x + 8, p.y - 12);
+                cpCtx.fillText(`MAG:${Math.round(p.norm * 100)}%`, p.x + 8, p.y - 4);
 
-                // Individual Alerts
                 if (p.norm > 0.8) {
                     cpCtx.strokeStyle = '#f22';
-                    cpCtx.lineWidth = 1;
-                    const b = 18 + Math.sin(t * 12) * 6;
+                    const b = 20 + Math.sin(t * 10) * 5;
                     cpCtx.save();
                     cpCtx.translate(p.x, p.y);
                     cpCtx.rotate(t * 3);
-                    cpCtx.strokeRect(-b, -b, b * 2, b * 2);
+                    cpCtx.strokeRect(-b / 2, -b / 2, b, b);
                     cpCtx.restore();
-                    cpCtx.fillStyle = '#f22';
-                    cpCtx.fillText('STATUS::CRITICAL', p.x + 10, p.y + 12);
                 }
             });
 
-            // --- SCANNING VECTOR (PRECISION) ---
-            const scanAngle = (t * 2.5) % (Math.PI * 2);
-            cpCtx.strokeStyle = '#0ff';
-            cpCtx.globalAlpha = 0.6;
-            cpCtx.lineWidth = 1.5;
+            // SCANNING LINE
+            const scanAngle = (t * 2) % (Math.PI * 2);
+            cpCtx.strokeStyle = 'rgba(0,255,255,0.4)';
             cpCtx.beginPath();
             cpCtx.moveTo(cx, cy);
             cpCtx.lineTo(cx + Math.cos(scanAngle) * radius, cy + Math.sin(scanAngle) * radius);
             cpCtx.stroke();
-            cpCtx.globalAlpha = 1.0;
 
-            // --- CENTER DATA READOUT ---
-            cpCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            // HEADER
+            cpCtx.fillStyle = 'rgba(0, 255, 255, 0.5)';
+            cpCtx.font = 'bold 11px Space Mono';
             cpCtx.textAlign = 'center';
-            cpCtx.font = 'bold 10px Space Mono';
-            cpCtx.fillText(`SYNC_V4.PLASMA`, cx, cy - 10);
-            cpCtx.font = '8px Space Mono';
-            cpCtx.fillText(`CPU_RDR:${(35 + Math.sin(t) * 5).toFixed(0)}%`, cx, cy + 10);
-
-            // --- TERMINAL HEADER (CORE STATUS) ---
-            cpCtx.fillStyle = 'rgba(0, 255, 255, 0.6)';
-            cpCtx.font = 'bold 10px "Courier New"';
-            cpCtx.fillText('IBONARIUM ANALYTIC CORE (LIVE)', cx, cy - radius - 70);
-
-            // Random Hex Data Processing
-            if (Math.random() < 0.15) {
-                const hexArr = ['0xFF823', '0x1A42F', '0xDECODE', '0xSYNC'];
-                cpCtx.fillStyle = 'rgba(0, 255, 255, 0.2)';
-                cpCtx.fillText(`PROC: ${hexArr[Math.floor(Math.random() * hexArr.length)]}`, cx + radius + 20, cy + radius + 20);
-            }
+            cpCtx.fillText('EXPANDED_ANALYTIC_FIELD // v.4.5', cx, cy - radius - 60);
         }
 
         function loop() {
