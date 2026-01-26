@@ -74,7 +74,7 @@
 
         /* LEFT SIDE */
         .left-hub {
-            width: 450px;
+            width: 405px;
             display: flex;
             flex-direction: column;
             gap: 12px;
@@ -158,8 +158,8 @@
 
         .sun-box {
             position: relative;
-            width: 220px;
-            height: 220px;
+            width: 200px;
+            height: 200px;
             background: transparent;
             display: flex;
             justify-content: center;
@@ -290,7 +290,7 @@
 
         /* RIGHT SIDE */
         .right-hub {
-            width: 900px;
+            width: 810px;
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -304,7 +304,7 @@
 
         .viz-box {
             width: 100%;
-            height: 650px;
+            height: 585px;
             /* Full height for graphs */
             position: relative;
             z-index: 1;
@@ -315,8 +315,8 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 800px;
-            height: 800px;
+            width: 720px;
+            height: 720px;
             z-index: 10;
             /* Above graphs */
             pointer-events: none;
@@ -505,8 +505,8 @@
         function resize() {
             const ratio = window.devicePixelRatio || 1;
             bgC.width = innerWidth * ratio; bgC.height = innerHeight * ratio;
-            vzC.width = 900 * ratio; vzC.height = 650 * ratio;
-            cpC.width = 800 * ratio; cpC.height = 800 * ratio;
+            vzC.width = 810 * ratio; vzC.height = 585 * ratio;
+            cpC.width = 720 * ratio; cpC.height = 720 * ratio;
             bgCtx.scale(ratio, ratio); vizCtx.scale(ratio, ratio); cpCtx.scale(ratio, ratio);
         }
         window.addEventListener('resize', resize); resize();
@@ -616,7 +616,7 @@
         }
 
         function drawViz(t) {
-            vizCtx.clearRect(0, 0, 900, 650);
+            vizCtx.clearRect(0, 0, 810, 585);
 
             const drawG = (lbl, hist, x, y, cw, ch, col, max, thr) => {
                 vizCtx.save(); vizCtx.translate(x, y); // No float movement for graphs
@@ -650,7 +650,7 @@
                 vizCtx.restore();
             };
 
-            const gw = 260, gh = 150, gapX = 300, gapY = 220;
+            const gw = 234, gh = 135, gapX = 270, gapY = 198;
             // ROW 1
             drawG('АНАЛІТИКА.ШВИДКОСТІ', HIST.wind, 20, 60, gw, gh, '#0af', 1000, 650);
             drawG('АНАЛІТИКА.ПРОТОНІВ', HIST.dens, 20 + gapX, 60, gw, gh, '#ff0', 50, 15);
@@ -662,10 +662,10 @@
         }
 
         function drawCompass(t) {
-            cpCtx.clearRect(0, 0, 800, 800);
-            const cx = 400, cy = 400;
+            cpCtx.clearRect(0, 0, 720, 720);
+            const cx = 360, cy = 360;
             const globalPulse = 1 + Math.sin(t * 1.5) * 0.02;
-            const radius = 320 * globalPulse; // Increased from 230
+            const radius = 288 * globalPulse; // Decreased by 10% (320 -> 288)
             const chaos = S.convi / 100;
 
             // --- TACTICAL GEARS (COUNTER-ROTATING RINGS) ---
