@@ -665,18 +665,36 @@
             cpCtx.clearRect(0, 0, 720, 720);
             const cx = 360, cy = 360;
             const globalPulse = 1 + Math.sin(t * 1.5) * 0.02;
-            const radius = 288 * globalPulse; // Decreased by 10% (320 -> 288)
+            const radius = 288 * globalPulse;
             const chaos = S.convi / 100;
 
-            // --- TACTICAL GEARS (COUNTER-ROTATING RINGS) ---
+            // --- REAL-TIME STATE ANALYZER ---
+            let status = { label: "ШТИЛЬ_00", color: "#0f4", level: 1, desc: "МАГНІТОСФЕРА СТАБІЛЬНА" };
+            if (S.kp >= 3 || S.wind > 450 || S.bz < -3) {
+                status = { label: "КВАНТОВИЙ_ДРЕЙФ", color: "#0af", level: 2, desc: "ПЕРЕХІДНИЙ ПОТІК ПЛАЗМИ" };
+            }
+            if (S.kp >= 4 || S.wind > 550 || S.bz < -8) {
+                status = { label: "ГЕО_ЗБУДЖЕННЯ", color: "#fa0", level: 3, desc: "ПОСИЛЕННЯ СОНЯЧНОГО ВІТРУ" };
+            }
+            if (S.kp >= 5 || S.wind > 650 || S.bz < -15) {
+                status = { label: "МАГНІТНИЙ_ШТОРМ", color: "#f55", level: 4, desc: "АКТИВНА ГЕОМАГНІТНА ПОДІЯ" };
+            }
+            if (S.kp >= 7 || chaos > 0.8) {
+                status = { label: "КРИТИЧНИЙ_ВИКИД", color: "#f0f", level: 5, desc: "ЕКСТРЕМАЛЬНИЙ РІВЕНЬ ЗАГРОЗИ" };
+            }
+
+            cpCtx.shadowBlur = 10 * status.level;
+            cpCtx.shadowColor = status.color;
+
+            // --- TACTICAL GEARS (REACTIVE COLORS) ---
             for (let i = 1; i <= 6; i++) {
                 const r = (radius / 6) * i;
                 const rot = i % 2 === 0 ? t * (0.15 + i * 0.04) : -t * (0.08 + i * 0.02);
-
                 cpCtx.save();
                 cpCtx.translate(cx, cy);
                 cpCtx.rotate(rot);
-                cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.04 + (i / 30)})`;
+                cpCtx.strokeStyle = status.level > 3 ? status.color : `rgba(0, 255, 255, ${0.04 + (i / 30)})`;
+                cpCtx.globalAlpha = status.level > 3 ? (Math.sin(t * 10) + 1.2) * 0.3 : 1.0;
 
                 if (i % 2 === 0) {
                     cpCtx.setLineDash([8, 20]);
@@ -685,113 +703,69 @@
                     cpCtx.setLineDash([30, 15]);
                     cpCtx.lineWidth = 1;
                 }
-
-                cpCtx.beginPath();
-                cpCtx.arc(0, 0, r, 0, Math.PI * 2);
-                cpCtx.stroke();
-
+                cpCtx.beginPath(); cpCtx.arc(0, 0, r, 0, Math.PI * 2); cpCtx.stroke();
                 if (i === 4 || i === 6) {
                     cpCtx.beginPath();
                     for (let h = 0; h < 8; h++) {
                         const a = h * Math.PI * 2 / 8;
                         h === 0 ? cpCtx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : cpCtx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
                     }
-                    cpCtx.closePath();
-                    cpCtx.globalAlpha = 0.08;
-                    cpCtx.stroke();
+                    cpCtx.closePath(); cpCtx.globalAlpha = 0.08; cpCtx.stroke();
                 }
                 cpCtx.restore();
             }
             cpCtx.setLineDash([]);
 
-            // --- ANALYTIC SIDEBARS (EXPANDED POSITION) ---
-            cpCtx.fillStyle = 'rgba(0, 255, 255, 0.4)';
-            cpCtx.font = '7px Space Mono';
+            // --- ANALYTIC SIDEBARS (STATE DATA) ---
+            cpCtx.fillStyle = status.color;
+            cpCtx.font = 'bold 8px Space Mono';
             cpCtx.textAlign = 'left';
-
             const telemetry = [
+                `SYST_PHASE: ${status.label}`,
+                `THREAT_LVL: ${status.level}/5`,
                 `CHAOS_IDX: ${(chaos * 100).toFixed(2)}%`,
-                `VECT_STABILITY: ${(100 - chaos * 80).toFixed(1)}%`,
-                `SYNC_LATENCY: ${(15 + Math.sin(t * 10) * 5).toFixed(0)}ms`,
-                `DATA_FIELD_EXP: ${(radius / 3.2).toFixed(1)}u`
+                `BZ_VECTOR: ${S.bz.toFixed(2)} nT`,
+                `K_INDEX: ${S.kp}`
             ];
             telemetry.forEach((txt, i) => cpCtx.fillText(`> ${txt}`, cx - radius - 50, cy - radius + 40 + i * 14));
 
-            cpCtx.textAlign = 'right';
-            let sysState = chaos > 0.6 ? 'ION_STORM_ALERT' : (chaos > 0.3 ? 'VECTOR_SHIFT' : 'NULL_STATE');
-            cpCtx.fillText(`CORE_LINK: STB_01`, cx + radius + 50, cy - radius + 40);
-            cpCtx.fillText(`MAP_RADIUS: ${radius.toFixed(0)}px`, cx + radius + 50, cy - radius + 54);
+            // THREAT METER BAR
+            cpCtx.strokeStyle = 'rgba(255,255,255,0.1)';
+            cpCtx.strokeRect(cx - radius - 50, cy - radius + 110, 100, 4);
+            cpCtx.fillStyle = status.color;
+            cpCtx.fillRect(cx - radius - 50, cy - radius + 110, status.level * 20, 4);
 
-            // --- ENERGY RADIATOR ---
+            // --- ENERGY RADIATOR (PULSE SYNC) ---
             for (let i = 0; i < 4; i++) {
-                const life = (t * 0.4 + i / 4) % 1;
+                const life = (t * (0.4 + status.level * 0.1) + i / 4) % 1;
                 const r = life * radius;
-                cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.25 * (1 - life)})`;
-                cpCtx.beginPath();
-                cpCtx.arc(cx, cy, r, 0, Math.PI * 2);
-                cpCtx.stroke();
+                cpCtx.strokeStyle = status.level > 2 ? status.color : `rgba(0, 255, 255, ${0.25 * (1 - life)})`;
+                cpCtx.beginPath(); cpCtx.arc(cx, cy, r, 0, Math.PI * 2); cpCtx.stroke();
             }
 
-            // --- PERIMETER KINETICS (WIDE) ---
-            cpCtx.save();
-            cpCtx.translate(cx, cy);
-            cpCtx.rotate(t * 0.05);
-            for (let a = 0; a < 360; a += 15) {
-                const ang = a * Math.PI / 180;
-                const len = a % 90 === 0 ? 20 : 8;
-                cpCtx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
-                cpCtx.beginPath();
-                cpCtx.moveTo(Math.cos(ang) * (radius + 5), Math.sin(ang) * (radius + 5));
-                cpCtx.lineTo(Math.cos(ang) * (radius + 5 + len), Math.sin(ang) * (radius + 5 + len));
-                cpCtx.stroke();
-
-                if (a % 30 === 0) {
-                    cpCtx.fillStyle = '#0ff';
-                    cpCtx.font = '6px Space Mono';
-                    cpCtx.fillText(a + '°', Math.cos(ang) * (radius + 30), Math.sin(ang) * (radius + 30));
-                }
-            }
-            cpCtx.restore();
-
-            // --- DATA POINTS & EXPANDED MAPPING ---
+            // --- DATA POINTS ---
             const points = configs.map((c, i) => {
                 const angle = (i * Math.PI * 2 / 8) + t * 0.08;
                 const val = S[c.k] || 0;
                 const n = Math.min(1, Math.abs(val) / c.m);
-                // Expand mapping logic: r starts further out and grows larger
                 const r = (n * radius * 0.7) + (radius * 0.3);
                 return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r, color: c.c, norm: n, label: c.k.toUpperCase(), ang: angle, r: r, val: val };
             });
 
-            // Energy Web (Mesh)
+            // Energy Web
             cpCtx.beginPath();
             cpCtx.setLineDash([2, 4]);
             cpCtx.lineWidth = 1;
-            cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.15 + chaos * 0.4})`;
+            cpCtx.strokeStyle = status.level > 3 ? status.color : `rgba(0, 255, 255, ${0.15 + chaos * 0.4})`;
             points.forEach((p, i) => { i === 0 ? cpCtx.moveTo(p.x, p.y) : cpCtx.lineTo(p.x, p.y); });
-            cpCtx.closePath();
-            cpCtx.stroke();
+            cpCtx.closePath(); cpCtx.stroke();
             cpCtx.setLineDash([]);
 
-            // DATA FLOW
+            // DATA NODES
             points.forEach((p, i) => {
-                const pc = 4;
-                for (let j = 0; j < pc; j++) {
-                    const pLife = (t * (0.3 + p.norm) + j / pc) % 1;
-                    const pr = (radius * 0.3) + (pLife * (p.r - radius * 0.3));
-                    const px = cx + Math.cos(p.ang) * pr;
-                    const py = cy + Math.sin(p.ang) * pr;
-                    cpCtx.fillStyle = p.color;
-                    cpCtx.globalAlpha = 0.3 * (1 - pLife);
-                    cpCtx.beginPath();
-                    cpCtx.arc(px, py, 1.2, 0, 6.28);
-                    cpCtx.fill();
-                }
-
+                const s = 4 + (p.norm * 2);
                 cpCtx.strokeStyle = p.color;
                 cpCtx.lineWidth = 2;
-                cpCtx.globalAlpha = 1.0;
-                const s = 4;
                 cpCtx.beginPath();
                 cpCtx.moveTo(p.x - s, p.y); cpCtx.lineTo(p.x + s, p.y);
                 cpCtx.moveTo(p.x, p.y - s); cpCtx.lineTo(p.x, p.y + s);
@@ -801,32 +775,34 @@
                 cpCtx.font = 'bold 7px Space Mono';
                 cpCtx.textAlign = 'left';
                 cpCtx.fillText(`[${p.label}]`, p.x + 8, p.y - 12);
-                cpCtx.fillText(`MAG:${Math.round(p.norm * 100)}%`, p.x + 8, p.y - 4);
+                cpCtx.fillText(`${Math.round(p.norm * 100)}%`, p.x + 8, p.y - 4);
 
-                if (p.norm > 0.8) {
+                if (p.norm > 0.8 || status.level >= 4) {
                     cpCtx.strokeStyle = '#f22';
-                    const b = 20 + Math.sin(t * 10) * 5;
-                    cpCtx.save();
-                    cpCtx.translate(p.x, p.y);
-                    cpCtx.rotate(t * 3);
-                    cpCtx.strokeRect(-b / 2, -b / 2, b, b);
-                    cpCtx.restore();
+                    const b = 15 + Math.sin(t * 15) * 5;
+                    cpCtx.save(); cpCtx.translate(p.x, p.y); cpCtx.rotate(t * 4);
+                    cpCtx.strokeRect(-b / 2, -b / 2, b, b); cpCtx.restore();
                 }
             });
 
-            // SCANNING LINE
-            const scanAngle = (t * 2) % (Math.PI * 2);
-            cpCtx.strokeStyle = 'rgba(0,255,255,0.4)';
-            cpCtx.beginPath();
-            cpCtx.moveTo(cx, cy);
-            cpCtx.lineTo(cx + Math.cos(scanAngle) * radius, cy + Math.sin(scanAngle) * radius);
-            cpCtx.stroke();
+            // --- CINEMATIC OVERLAY ---
+            if (status.level >= 4) {
+                cpCtx.fillStyle = Math.sin(t * 20) > 0 ? 'rgba(255, 0, 0, 0.05)' : 'transparent';
+                cpCtx.beginPath(); cpCtx.arc(cx, cy, radius, 0, Math.PI * 2); cpCtx.fill();
 
-            // HEADER
-            cpCtx.fillStyle = 'rgba(0, 255, 255, 0.5)';
+                cpCtx.fillStyle = '#f22';
+                cpCtx.font = 'bold 12px Space Mono';
+                cpCtx.textAlign = 'center';
+                cpCtx.fillText('!! УВАГА: КРИТИЧНЕ ЗБУДЖЕННЯ !!', cx, cy + radius + 40);
+            }
+
+            // HEADER INFO
+            cpCtx.fillStyle = status.color;
             cpCtx.font = 'bold 11px Space Mono';
             cpCtx.textAlign = 'center';
-            cpCtx.fillText('EXPANDED_ANALYTIC_FIELD // v.4.5', cx, cy - radius - 60);
+            cpCtx.fillText(`${status.label} // ${status.desc}`, cx, cy - radius - 60);
+
+            cpCtx.shadowBlur = 0;
         }
 
         function loop() {
