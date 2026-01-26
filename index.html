@@ -664,142 +664,201 @@
         function drawCompass(t) {
             cpCtx.clearRect(0, 0, 800, 800);
             const cx = 400, cy = 400;
-
-            // GLOBAL SLOW PULSE
-            const globalPulse = 1 + Math.sin(t * 0.8) * 0.03;
-            const radius = 240 * globalPulse;
+            const globalPulse = 1 + Math.sin(t * 1.5) * 0.02;
+            const radius = 230 * globalPulse;
             const chaos = S.convi / 100;
 
-            // --- PHASE HORIZON (PULSING GRID) ---
-            cpCtx.save();
-            cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.03 + Math.sin(t) * 0.02})`;
-            cpCtx.lineWidth = 1;
-            for (let i = -6; i <= 6; i++) {
-                const y = cy + i * 45 * globalPulse + Math.sin(t * 0.5 + i) * 10;
+            // --- TACTICAL GEARS (COUNTER-ROTATING RINGS) ---
+            for (let i = 1; i <= 6; i++) {
+                const r = (radius / 6) * i;
+                const rot = i % 2 === 0 ? t * (0.2 + i * 0.05) : -t * (0.1 + i * 0.03);
+
+                cpCtx.save();
+                cpCtx.translate(cx, cy);
+                cpCtx.rotate(rot);
+                cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.05 + (i / 25)})`;
+
+                // Mechanical Notch Pattern (Gears)
+                if (i % 2 === 0) {
+                    cpCtx.setLineDash([5, 15]);
+                    cpCtx.lineWidth = 3;
+                } else {
+                    cpCtx.setLineDash([20, 10]);
+                    cpCtx.lineWidth = 1;
+                }
+
                 cpCtx.beginPath();
-                cpCtx.moveTo(cx - radius * 1.2, y);
-                cpCtx.lineTo(cx + radius * 1.2, y);
+                cpCtx.arc(0, 0, r, 0, Math.PI * 2);
                 cpCtx.stroke();
 
-                const x = cx + i * 65 * globalPulse + Math.cos(t * 0.4 + i) * 15;
+                // Extra geometric details inside rings
+                if (i === 3 || i === 5) {
+                    cpCtx.beginPath();
+                    for (let h = 0; h < 6; h++) {
+                        const a = h * Math.PI * 2 / 6;
+                        h === 0 ? cpCtx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : cpCtx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+                    }
+                    cpCtx.closePath();
+                    cpCtx.globalAlpha = 0.1;
+                    cpCtx.stroke();
+                }
+                cpCtx.restore();
+            }
+            cpCtx.setLineDash([]);
+
+            // --- ANALYTIC SIDEBARS (INSIDE CANVAS) ---
+            cpCtx.fillStyle = 'rgba(0, 255, 255, 0.4)';
+            cpCtx.font = '7px Space Mono';
+            cpCtx.textAlign = 'left';
+
+            // Left Telemetry
+            const telemetry = [
+                `CHAOS_IDX: ${(chaos * 100).toFixed(2)}%`,
+                `VECT_STABILITY: ${(100 - chaos * 80).toFixed(1)}%`,
+                `SYNC_LATENCY: ${(15 + Math.sin(t * 10) * 5).toFixed(0)}ms`,
+                `ACTIVE_NODES: 08/08`,
+                `BUFFER_LOAD: ${(40 + Math.random() * 10).toFixed(1)}%`
+            ];
+            telemetry.forEach((txt, i) => cpCtx.fillText(`> ${txt}`, cx - radius - 60, cy - radius + 100 + i * 12));
+
+            // Right System State
+            cpCtx.textAlign = 'right';
+            let sysState = chaos > 0.6 ? 'STORM_DETECTED' : (chaos > 0.3 ? 'DRIFT_ANALYSIS' : 'STABLE_FLUX');
+            cpCtx.fillText(`STATE: ${sysState}`, cx + radius + 60, cy - radius + 100);
+            cpCtx.fillText(`LOCK: ACTIVE_CORE_01`, cx + radius + 60, cy - radius + 112);
+            cpCtx.fillText(`REF: 2026.plasma.IO`, cx + radius + 60, cy - radius + 124);
+
+            // --- ENERGY CORE RADIATOR ---
+            const count = 4;
+            for (let i = 0; i < count; i++) {
+                const life = (t * 0.5 + i / count) % 1;
+                const r = life * radius;
+                cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.3 * (1 - life)})`;
                 cpCtx.beginPath();
-                cpCtx.moveTo(x, cy - radius * 1.2);
-                cpCtx.lineTo(x, cy + radius * 1.2);
+                cpCtx.arc(cx, cy, r, 0, Math.PI * 2);
                 cpCtx.stroke();
+            }
+
+            // --- PERIMETER KINETICS & ANGLE DATA ---
+            cpCtx.save();
+            cpCtx.translate(cx, cy);
+            cpCtx.rotate(t * 0.1);
+            for (let a = 0; a < 360; a += 10) {
+                const ang = a * Math.PI / 180;
+                const len = a % 90 === 0 ? 15 : 5;
+                cpCtx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+                cpCtx.beginPath();
+                cpCtx.moveTo(Math.cos(ang) * (radius + 10), Math.sin(ang) * (radius + 10));
+                cpCtx.lineTo(Math.cos(ang) * (radius + 10 + len), Math.sin(ang) * (radius + 10 + len));
+                cpCtx.stroke();
+                if (a % 30 === 0) {
+                    cpCtx.fillStyle = '#0ff';
+                    cpCtx.font = '6px Space Mono';
+                    cpCtx.fillText(a + '°', Math.cos(ang) * (radius + 30), Math.sin(ang) * (radius + 30));
+                }
+                // Analytical bitstips on perimeter
+                if (a % 20 === 0 && Math.random() < 0.3) {
+                    cpCtx.fillStyle = 'rgba(0, 255, 255, 0.1)';
+                    cpCtx.fillRect(Math.cos(ang) * (radius + 50), Math.sin(ang) * (radius + 50), 2, 8);
+                }
             }
             cpCtx.restore();
 
-            // --- ENERGY ORBITALS (AROUND CORE) ---
-            for (let i = 1; i <= 3; i++) {
-                const r = radius * (1 + i * 0.2);
-                cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.05 / i})`;
-                cpCtx.setLineDash([10, 100]);
-                cpCtx.save();
-                cpCtx.translate(cx, cy);
-                cpCtx.rotate(t * 0.2 * (i % 2 === 0 ? 1 : -1));
-                cpCtx.beginPath();
-                cpCtx.arc(0, 0, r, 0, Math.PI * 2);
-                cpCtx.stroke();
-                cpCtx.restore();
-            }
-            cpCtx.setLineDash([]);
-
-            // --- HOLOGRAPHIC ARCS ---
-            for (let i = 1; i <= 4; i++) {
-                const r = (radius / 4) * i;
-                cpCtx.lineWidth = 2;
-                cpCtx.setLineDash([30, 120]);
-                cpCtx.strokeStyle = `rgba(0, 200, 255, ${0.1 + i / 12})`;
-                cpCtx.save();
-                cpCtx.translate(cx, cy);
-                cpCtx.rotate(t * 0.3 * (i % 2 === 0 ? -0.5 : 0.5));
-                cpCtx.beginPath();
-                cpCtx.arc(0, 0, r, 0, Math.PI * 2);
-                cpCtx.stroke();
-                cpCtx.restore();
-            }
-            cpCtx.setLineDash([]);
-
-            // --- DATA POINTS & ENERGY ARCS ---
+            // --- DATA POINTS & DETAILED ANALYTICS ---
             const points = configs.map((c, i) => {
-                const angle = (i * Math.PI * 2 / 8) + t * 0.1;
+                const angle = (i * Math.PI * 2 / 8) + t * 0.08;
                 const val = S[c.k] || 0;
                 const n = Math.min(1, Math.abs(val) / c.m);
-                const r = (n * radius) * 0.8 + 50;
-                return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r, color: c.c, norm: n, label: c.k.toUpperCase() };
+                const r = (n * radius);
+                return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r, color: c.c, norm: n, label: c.k.toUpperCase(), ang: angle, r: r, val: val };
             });
 
-            // ENERGY DISCHARGES (RANDOM ARCS BETWEEN NODES)
-            if (Math.random() < 0.15 + chaos * 0.3) {
-                const p1 = points[Math.floor(Math.random() * points.length)];
-                const p2 = points[Math.floor(Math.random() * points.length)];
-                cpCtx.strokeStyle = 'rgba(200, 255, 255, 0.4)';
-                cpCtx.lineWidth = 0.5;
-                cpCtx.beginPath();
-                cpCtx.moveTo(p1.x, p1.y);
-                cpCtx.bezierCurveTo(cx + (Math.random() - 0.5) * 50, cy + (Math.random() - 0.5) * 50, cx, cy, p2.x, p2.y);
-                cpCtx.stroke();
-            }
-
-            // DATA MESH (PULSING)
+            // Energy Web (Mesh)
             cpCtx.beginPath();
             cpCtx.lineWidth = 1;
-            cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.15 + (Math.sin(t * 3) + 1) * 0.1})`;
+            cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.1 + chaos * 0.5})`;
             points.forEach((p, i) => { i === 0 ? cpCtx.moveTo(p.x, p.y) : cpCtx.lineTo(p.x, p.y); });
             cpCtx.closePath();
             cpCtx.stroke();
 
-            // RENDER NODES
+            // DATA FLOW & POINT DETAILS
             points.forEach((p, i) => {
-                const nodePulse = 1 + Math.sin(t * 4 + i) * 0.15;
-                cpCtx.shadowBlur = 15;
-                cpCtx.shadowColor = p.color;
+                // Flowing particles
+                const pc = 3;
+                for (let j = 0; j < pc; j++) {
+                    const pLife = (t * (0.4 + p.norm) + j / pc) % 1;
+                    const px = cx + Math.cos(p.ang) * (pLife * p.r);
+                    const py = cy + Math.sin(p.ang) * (pLife * p.r);
+                    cpCtx.fillStyle = p.color;
+                    cpCtx.globalAlpha = 0.3 * (1 - pLife);
+                    cpCtx.beginPath();
+                    cpCtx.arc(px, py, 1.5, 0, 6.28);
+                    cpCtx.fill();
+                }
 
-                const grad = cpCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 15 * nodePulse);
-                grad.addColorStop(0, '#fff');
-                grad.addColorStop(0.2, p.color);
-                grad.addColorStop(1, 'transparent');
-
-                cpCtx.fillStyle = grad;
+                // Digital Marker (+)
+                cpCtx.strokeStyle = p.color;
+                cpCtx.lineWidth = 2;
+                cpCtx.globalAlpha = 1.0;
+                const s = 4;
                 cpCtx.beginPath();
-                cpCtx.arc(p.x, p.y, 20 * nodePulse, 0, Math.PI * 2);
-                cpCtx.fill();
+                cpCtx.moveTo(p.x - s, p.y); cpCtx.lineTo(p.x + s, p.y);
+                cpCtx.moveTo(p.x, p.y - s); cpCtx.lineTo(p.x, p.y + s);
+                cpCtx.stroke();
 
-                // HUD LABELS
-                cpCtx.shadowBlur = 0;
-                cpCtx.fillStyle = 'rgba(255,255,255,0.6)';
-                cpCtx.font = '7px Space Mono, monospace';
-                cpCtx.fillText(`DATA::${p.label}`, p.x + 15, p.y - 5);
-                cpCtx.fillText(`VAL::${Math.round(p.norm * 100)}%`, p.x + 15, p.y + 5);
-
-                // ENERGY PARTICLES ORBITING NODES
-                const pRot = t * 2 + i;
+                // Detailed HUD Popup
                 cpCtx.fillStyle = '#fff';
-                cpCtx.beginPath();
-                cpCtx.arc(p.x + Math.cos(pRot) * 15, p.y + Math.sin(pRot) * 15, 1, 0, 6.28);
-                cpCtx.fill();
+                cpCtx.font = 'bold 7px Space Mono';
+                cpCtx.textAlign = 'left';
+                cpCtx.fillText(`ID:[${p.label}]`, p.x + 10, p.y - 14);
+                cpCtx.fillText(`CUR:${p.val.toFixed(1)}`, p.x + 10, p.y - 6);
+                cpCtx.fillText(`MAG:${Math.round(p.norm * 100)}%`, p.x + 10, p.y + 2);
+
+                // Individual Alerts
+                if (p.norm > 0.8) {
+                    cpCtx.strokeStyle = '#f22';
+                    cpCtx.lineWidth = 1;
+                    const b = 18 + Math.sin(t * 12) * 6;
+                    cpCtx.save();
+                    cpCtx.translate(p.x, p.y);
+                    cpCtx.rotate(t * 3);
+                    cpCtx.strokeRect(-b, -b, b * 2, b * 2);
+                    cpCtx.restore();
+                    cpCtx.fillStyle = '#f22';
+                    cpCtx.fillText('STATUS::CRITICAL', p.x + 10, p.y + 12);
+                }
             });
 
-            // --- CINEMATIC SCANNER (SOFT ENERGY) ---
-            const scanAngle = (t * 1.5) % (Math.PI * 2);
-            cpCtx.save();
-            cpCtx.translate(cx, cy);
-            cpCtx.rotate(scanAngle);
-            const scanGrad = cpCtx.createLinearGradient(0, 0, radius * 1.5, 0);
-            scanGrad.addColorStop(0, 'transparent');
-            scanGrad.addColorStop(1, 'rgba(0, 255, 255, 0.2)');
-            cpCtx.fillStyle = scanGrad;
+            // --- SCANNING VECTOR (PRECISION) ---
+            const scanAngle = (t * 2.5) % (Math.PI * 2);
+            cpCtx.strokeStyle = '#0ff';
+            cpCtx.globalAlpha = 0.6;
+            cpCtx.lineWidth = 1.5;
             cpCtx.beginPath();
-            cpCtx.moveTo(0, 0);
-            cpCtx.arc(0, 0, radius * 1.5, -0.1, 0.1);
-            cpCtx.fill();
-            cpCtx.restore();
+            cpCtx.moveTo(cx, cy);
+            cpCtx.lineTo(cx + Math.cos(scanAngle) * radius, cy + Math.sin(scanAngle) * radius);
+            cpCtx.stroke();
+            cpCtx.globalAlpha = 1.0;
 
-            // --- HUD STATUS TEXT ---
-            cpCtx.fillStyle = `rgba(0, 255, 255, ${0.4 + Math.sin(t * 2) * 0.2})`;
-            cpCtx.font = 'bold 9px Courier New';
+            // --- CENTER DATA READOUT ---
+            cpCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             cpCtx.textAlign = 'center';
-            cpCtx.fillText('ENERGY_CORE_SYNC // LIVE_PHASE', cx, cy - radius - 80);
+            cpCtx.font = 'bold 10px Space Mono';
+            cpCtx.fillText(`SYNC_V4.PLASMA`, cx, cy - 10);
+            cpCtx.font = '8px Space Mono';
+            cpCtx.fillText(`CPU_RDR:${(35 + Math.sin(t) * 5).toFixed(0)}%`, cx, cy + 10);
+
+            // --- TERMINAL HEADER (CORE STATUS) ---
+            cpCtx.fillStyle = 'rgba(0, 255, 255, 0.6)';
+            cpCtx.font = 'bold 10px "Courier New"';
+            cpCtx.fillText('IBONARIUM ANALYTIC CORE (LIVE)', cx, cy - radius - 70);
+
+            // Random Hex Data Processing
+            if (Math.random() < 0.15) {
+                const hexArr = ['0xFF823', '0x1A42F', '0xDECODE', '0xSYNC'];
+                cpCtx.fillStyle = 'rgba(0, 255, 255, 0.2)';
+                cpCtx.fillText(`PROC: ${hexArr[Math.floor(Math.random() * hexArr.length)]}`, cx + radius + 20, cy + radius + 20);
+            }
         }
 
         function loop() {
