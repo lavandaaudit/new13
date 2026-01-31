@@ -41,7 +41,6 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            /* Vertical centering */
             width: 100%;
             min-height: 100vh;
             padding: 20px;
@@ -296,8 +295,6 @@
             gap: 20px;
             align-items: center;
             justify-content: flex-start;
-            padding-top: 0;
-            /* Removed fixed large padding to allow vertical centering to work */
             position: relative;
             z-index: 50;
         }
@@ -305,7 +302,6 @@
         .viz-box {
             width: 100%;
             height: 585px;
-            /* Full height for graphs */
             position: relative;
             z-index: 1;
         }
@@ -318,10 +314,8 @@
             width: 720px;
             height: 720px;
             z-index: 10;
-            /* Above graphs */
             pointer-events: none;
-            /* Don't block interaction */
-            opacity: 0.8;
+            opacity: 0.9;
         }
 
         canvas#viz-canvas,
@@ -330,7 +324,6 @@
             height: 100%;
         }
 
-        /* OVERLAYS */
         #alert-hub {
             position: fixed;
             top: 10px;
@@ -386,12 +379,13 @@
                 max-width: 450px;
             }
 
-            .right-hub {
-                padding-top: 0;
-            }
-
             .viz-box {
                 height: 900px;
+            }
+
+            .compass-box {
+                width: 450px;
+                height: 450px;
             }
         }
     </style>
@@ -511,13 +505,14 @@
         }
         window.addEventListener('resize', resize); resize();
 
-        const stars = [...Array(400)].map(() => ({ x: Math.random() * 2 - 1, y: Math.random() * 2 - 1, z: Math.random() * 2000, s: Math.random() * 1.2 + 0.5 }));
-        const formulaTexts = ["P_dyn = ρv²", "λ = h/p", "E = hν", "∇·B = 0", "F = q(E + v×B)"];
-        const formulaObjs = formulaTexts.map(f => ({ t: f, x: Math.random(), y: Math.random(), ph: Math.random() * 6.28 }));
+        // Optimized Starfield
+        const stars = [...Array(300)].map(() => ({
+            x: Math.random() * 2 - 1,
+            y: Math.random() * 2 - 1,
+            z: Math.random() * 2000,
+            s: Math.random() * 1.5 + 0.5
+        }));
 
-        // ------------------------------------------------------------------
-        // CORE FUNCTIONS
-        // ------------------------------------------------------------------
         let activeSolo = -1, curSpec = '0171';
 
         function solo(i) { activeSolo = (activeSolo === i) ? -1 : i; log(`Соло синхр.: ${activeSolo === -1 ? 'ВИМК' : configs[i].l}`); }
@@ -601,29 +596,31 @@
         }
 
         function drawBackground(t) {
-            bgCtx.fillStyle = '#000'; bgCtx.fillRect(0, 0, innerWidth, innerHeight);
+            bgCtx.fillStyle = '#000';
+            bgCtx.fillRect(0, 0, innerWidth, innerHeight);
             const cx = innerWidth / 2, cy = innerHeight / 2;
-            stars.forEach(s => { s.z -= 1.8; if (s.z <= 0) s.z = 2000; let k = 400 / s.z; let px = s.x * k * innerWidth + cx, py = s.y * k * innerHeight + cy; if (px < 0 || px > innerWidth || py < 0 || py > innerHeight) return; bgCtx.fillStyle = `rgba(180,240,255,${1 - s.z / 2000})`; bgCtx.beginPath(); bgCtx.arc(px, py, (1 - s.z / 2000) * s.s, 0, 6.28); bgCtx.fill(); });
-            formulaObjs.forEach(f => { const a = Math.sin(t * 0.5 + f.ph) * 0.2 + 0.1; bgCtx.fillStyle = `rgba(0,180,255,${a})`; bgCtx.font = '10px Courier New'; bgCtx.fillText(f.t, f.x * innerWidth + Math.sin(t + f.ph) * 20, f.y * innerHeight); });
-            for (let i = 0; i < 12; i++) {
-                bgCtx.beginPath(); const ang = t * 0.04 + (i * Math.PI * 2 / 12);
-                const r1 = 200 + Math.sin(t + i) * 60, r2 = 700 + Math.cos(t * 0.4 + i) * 120;
-                bgCtx.moveTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
-                bgCtx.lineTo(cx + Math.cos(ang) * r2, cy + Math.sin(ang) * r2);
-                bgCtx.strokeStyle = `rgba(0, 255, 255, ${0.04 + 0.04 * Math.sin(t * 0.5)})`;
-                bgCtx.lineWidth = 1; bgCtx.stroke();
-            }
+
+            // Optimized Starfield
+            bgCtx.fillStyle = '#b4f0ff';
+            stars.forEach(s => {
+                s.z -= 2;
+                if (s.z <= 0) s.z = 2000;
+                let k = 400 / s.z;
+                let px = s.x * k * innerWidth + cx, py = s.y * k * innerHeight + cy;
+                if (px < 0 || px > innerWidth || py < 0 || py > innerHeight) return;
+                bgCtx.globalAlpha = 1 - s.z / 2000;
+                bgCtx.fillRect(px, py, s.s, s.s);
+            });
+            bgCtx.globalAlpha = 1;
         }
 
         function drawViz(t) {
             vizCtx.clearRect(0, 0, 810, 585);
 
             const drawG = (lbl, hist, x, y, cw, ch, col, max, thr) => {
-                vizCtx.save(); vizCtx.translate(x, y); // No float movement for graphs
-                vizCtx.strokeStyle = 'rgba(0,180,255,0.15)'; vizCtx.lineWidth = 1;
+                vizCtx.save(); vizCtx.translate(x, y);
+                vizCtx.strokeStyle = 'rgba(0,180,255,0.1)'; vizCtx.lineWidth = 1;
                 for (let i = 0; i <= 3; i++) { vizCtx.beginPath(); vizCtx.moveTo(0, i * ch / 3); vizCtx.lineTo(cw, i * ch / 3); vizCtx.stroke(); }
-                vizCtx.strokeStyle = 'rgba(0,180,255,0.05)';
-                for (let i = 0; i <= 4; i++) { vizCtx.beginPath(); vizCtx.moveTo(i * cw / 4, 0); vizCtx.lineTo(i * cw / 4, ch); vizCtx.stroke(); }
 
                 if (hist.length > 0) {
                     const last = hist[hist.length - 1] || 0;
@@ -635,27 +632,20 @@
                     });
                     vizCtx.strokeStyle = isAlert ? '#f22' : col; vizCtx.lineWidth = 1.8; vizCtx.stroke();
 
-                    hist.forEach((v, i) => {
-                        if (i % 5 === 0 || i === hist.length - 1) {
-                            const gx = i * (cw / (LIMIT - 1)); const gy = ch - (Math.abs(v) / max) * ch;
-                            vizCtx.beginPath(); vizCtx.arc(gx, gy, 2, 0, 6.28); vizCtx.fillStyle = isAlert ? '#f22' : col; vizCtx.fill();
-                            if (i === hist.length - 1) {
-                                vizCtx.fillStyle = '#fff'; vizCtx.font = 'bold 8px Courier New';
-                                vizCtx.fillText(parseFloat(v).toFixed(1), gx + 4, gy + 3);
-                            }
-                        }
-                    });
+                    const endX = (hist.length - 1) * (cw / (LIMIT - 1));
+                    const endY = ch - (Math.abs(last) / max) * ch;
+                    vizCtx.beginPath(); vizCtx.arc(endX, endY, 2, 0, 6.28); vizCtx.fillStyle = '#fff'; vizCtx.fill();
+                    vizCtx.font = 'bold 8px Courier New'; vizCtx.fillText(parseFloat(last).toFixed(1), endX + 4, endY + 3);
                 }
                 vizCtx.fillStyle = col; vizCtx.font = '8px Courier New'; vizCtx.fillText(lbl, 0, -6);
                 vizCtx.restore();
             };
 
             const gw = 234, gh = 135, gapX = 270, gapY = 198;
-            // ROW 1
+            // Full analytics labels restored
             drawG('АНАЛІТИКА.ШВИДКОСТІ', HIST.wind, 20, 60, gw, gh, '#0af', 1000, 650);
             drawG('АНАЛІТИКА.ПРОТОНІВ', HIST.dens, 20 + gapX, 60, gw, gh, '#ff0', 50, 15);
             drawG('АНАЛІТИКА.MAG_BT', HIST.bt, 20 + gapX * 2, 60, gw, gh, '#f05', 50, 18);
-            // ROW 2
             drawG('ІНДЕКС.KP', HIST.kp, 20, 60 + gapY, gw, gh, '#f80', 9, 5);
             drawG('АНАЛІТИКА.MAG_BZ', HIST.bz, 20 + gapX, 60 + gapY, gw, gh, '#44f', 25, 12);
             drawG('ІНДЕКС.ХАОСУ', HIST.convi, 20 + gapX * 2, 60 + gapY, gw, gh, '#0ff', 100, 70);
@@ -664,11 +654,10 @@
         function drawCompass(t) {
             cpCtx.clearRect(0, 0, 720, 720);
             const cx = 360, cy = 360;
-            const globalPulse = 1 + Math.sin(t * 1.5) * 0.02;
+            const globalPulse = 1 + Math.sin(t * 1.5) * 0.01;
             const radius = 288 * globalPulse;
             const chaos = S.convi / 100;
 
-            // --- REAL-TIME STATE ANALYZER ---
             let status = { label: "ШТИЛЬ_00", color: "#0f4", level: 1, desc: "МАГНІТОСФЕРА СТАБІЛЬНА" };
             if (S.kp >= 3 || S.wind > 450 || S.bz < -3) {
                 status = { label: "КВАНТОВИЙ_ДРЕЙФ", color: "#0af", level: 2, desc: "ПЕРЕХІДНИЙ ПОТІК ПЛАЗМИ" };
@@ -683,42 +672,23 @@
                 status = { label: "КРИТИЧНИЙ_ВИКИД", color: "#f0f", level: 5, desc: "ЕКСТРЕМАЛЬНИЙ РІВЕНЬ ЗАГРОЗИ" };
             }
 
-            cpCtx.shadowBlur = 10 * status.level;
-            cpCtx.shadowColor = status.color;
+            if (status.level > 3) {
+                cpCtx.shadowBlur = 10;
+                cpCtx.shadowColor = status.color;
+            }
 
-            // --- TACTICAL GEARS (REACTIVE COLORS) ---
-            for (let i = 1; i <= 6; i++) {
-                const r = (radius / 6) * i;
-                const rot = i % 2 === 0 ? t * (0.15 + i * 0.04) : -t * (0.08 + i * 0.02);
-                cpCtx.save();
-                cpCtx.translate(cx, cy);
-                cpCtx.rotate(rot);
-                cpCtx.strokeStyle = status.level > 3 ? status.color : `rgba(0, 255, 255, ${0.04 + (i / 30)})`;
-                cpCtx.globalAlpha = status.level > 3 ? (Math.sin(t * 10) + 1.2) * 0.3 : 1.0;
-
-                if (i % 2 === 0) {
-                    cpCtx.setLineDash([8, 20]);
-                    cpCtx.lineWidth = 2.5;
-                } else {
-                    cpCtx.setLineDash([30, 15]);
-                    cpCtx.lineWidth = 1;
-                }
-                cpCtx.beginPath(); cpCtx.arc(0, 0, r, 0, Math.PI * 2); cpCtx.stroke();
-                if (i === 4 || i === 6) {
-                    cpCtx.beginPath();
-                    for (let h = 0; h < 8; h++) {
-                        const a = h * Math.PI * 2 / 8;
-                        h === 0 ? cpCtx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : cpCtx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-                    }
-                    cpCtx.closePath(); cpCtx.globalAlpha = 0.08; cpCtx.stroke();
-                }
+            for (let i = 1; i <= 4; i++) {
+                const r = (radius / i);
+                cpCtx.save(); cpCtx.translate(cx, cy); cpCtx.rotate(i % 2 ? t * 0.05 : -t * 0.03);
+                cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.05 + (i / 40)})`;
+                cpCtx.setLineDash([10, 20]); cpCtx.beginPath(); cpCtx.arc(0, 0, (radius / 4) * i, 0, 6.28); cpCtx.stroke();
                 cpCtx.restore();
             }
             cpCtx.setLineDash([]);
 
-            // --- ANALYTIC SIDEBARS (STATE DATA) ---
+            // Full Telemetry Restored
             cpCtx.fillStyle = status.color;
-            cpCtx.font = 'bold 8px Space Mono';
+            cpCtx.font = 'bold 8px Courier New';
             cpCtx.textAlign = 'left';
             const telemetry = [
                 `SYST_PHASE: ${status.label}`,
@@ -729,80 +699,30 @@
             ];
             telemetry.forEach((txt, i) => cpCtx.fillText(`> ${txt}`, cx - radius - 50, cy - radius + 40 + i * 14));
 
-            // THREAT METER BAR
-            cpCtx.strokeStyle = 'rgba(255,255,255,0.1)';
-            cpCtx.strokeRect(cx - radius - 50, cy - radius + 110, 100, 4);
-            cpCtx.fillStyle = status.color;
-            cpCtx.fillRect(cx - radius - 50, cy - radius + 110, status.level * 20, 4);
-
-            // --- ENERGY RADIATOR (PULSE SYNC) ---
-            for (let i = 0; i < 4; i++) {
-                const life = (t * (0.4 + status.level * 0.1) + i / 4) % 1;
-                const r = life * radius;
-                cpCtx.strokeStyle = status.level > 2 ? status.color : `rgba(0, 255, 255, ${0.25 * (1 - life)})`;
-                cpCtx.beginPath(); cpCtx.arc(cx, cy, r, 0, Math.PI * 2); cpCtx.stroke();
-            }
-
-            // --- DATA POINTS ---
             const points = configs.map((c, i) => {
-                const angle = (i * Math.PI * 2 / 8) + t * 0.08;
-                const val = S[c.k] || 0;
-                const n = Math.min(1, Math.abs(val) / c.m);
+                const angle = (i * Math.PI * 2 / 8) + t * 0.05;
+                const n = Math.min(1, Math.abs(S[c.k] || 0) / c.m);
                 const r = (n * radius * 0.7) + (radius * 0.3);
-                return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r, color: c.c, norm: n, label: c.k.toUpperCase(), ang: angle, r: r, val: val };
+                return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r, color: c.c, norm: n, label: c.k.toUpperCase() };
             });
 
-            // Energy Web
             cpCtx.beginPath();
             cpCtx.setLineDash([2, 4]);
-            cpCtx.lineWidth = 1;
-            cpCtx.strokeStyle = status.level > 3 ? status.color : `rgba(0, 255, 255, ${0.15 + chaos * 0.4})`;
+            cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.15 + chaos * 0.4})`;
             points.forEach((p, i) => { i === 0 ? cpCtx.moveTo(p.x, p.y) : cpCtx.lineTo(p.x, p.y); });
             cpCtx.closePath(); cpCtx.stroke();
             cpCtx.setLineDash([]);
 
-            // DATA NODES
-            points.forEach((p, i) => {
-                const s = 4 + (p.norm * 2);
-                cpCtx.strokeStyle = p.color;
-                cpCtx.lineWidth = 2;
-                cpCtx.beginPath();
-                cpCtx.moveTo(p.x - s, p.y); cpCtx.lineTo(p.x + s, p.y);
-                cpCtx.moveTo(p.x, p.y - s); cpCtx.lineTo(p.x, p.y + s);
-                cpCtx.stroke();
-
-                cpCtx.fillStyle = '#fff';
-                cpCtx.font = 'bold 7px Space Mono';
-                cpCtx.textAlign = 'left';
-                cpCtx.fillText(`[${p.label}]`, p.x + 8, p.y - 12);
-                cpCtx.fillText(`${Math.round(p.norm * 100)}%`, p.x + 8, p.y - 4);
-
-                if (p.norm > 0.8 || status.level >= 4) {
-                    cpCtx.strokeStyle = '#f22';
-                    const b = 15 + Math.sin(t * 15) * 5;
-                    cpCtx.save(); cpCtx.translate(p.x, p.y); cpCtx.rotate(t * 4);
-                    cpCtx.strokeRect(-b / 2, -b / 2, b, b); cpCtx.restore();
-                }
+            points.forEach(p => {
+                cpCtx.fillStyle = p.color;
+                cpCtx.beginPath(); cpCtx.arc(p.x, p.y, 3, 0, 6.28); cpCtx.fill();
+                cpCtx.fillStyle = '#fff'; cpCtx.font = 'bold 7px Courier New';
+                cpCtx.fillText(`[${p.label}]`, p.x + 8, p.y - 4);
             });
 
-            // --- CINEMATIC OVERLAY ---
-            if (status.level >= 4) {
-                cpCtx.fillStyle = Math.sin(t * 20) > 0 ? 'rgba(255, 0, 0, 0.05)' : 'transparent';
-                cpCtx.beginPath(); cpCtx.arc(cx, cy, radius, 0, Math.PI * 2); cpCtx.fill();
-
-                cpCtx.fillStyle = '#f22';
-                cpCtx.font = 'bold 12px Space Mono';
-                cpCtx.textAlign = 'center';
-                cpCtx.fillText('!! УВАГА: КРИТИЧНЕ ЗБУДЖЕННЯ !!', cx, cy + radius + 40);
-            }
-
-            // HEADER INFO
-            cpCtx.fillStyle = status.color;
-            cpCtx.font = 'bold 11px Space Mono';
-            cpCtx.textAlign = 'center';
-            cpCtx.fillText(`${status.label} // ${status.desc}`, cx, cy - radius - 60);
-
             cpCtx.shadowBlur = 0;
+            cpCtx.font = 'bold 11px Courier New'; cpCtx.textAlign = 'center';
+            cpCtx.fillText(`${status.label} // ${status.desc}`, cx, cy - radius - 60);
         }
 
         function loop() {
