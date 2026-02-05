@@ -547,26 +547,40 @@
 
         async function fetchAll() {
             try {
+                // Спроба прямого запиту до NOAA API
                 const [p, m, k] = await Promise.all([
-                    fetch(proxy + encodeURIComponent('https://services.swpc.noaa.gov/products/solar-wind/plasma-5-minute.json')).then(r => r.json()),
-                    fetch(proxy + encodeURIComponent('https://services.swpc.noaa.gov/products/solar-wind/mag-5-minute.json')).then(r => r.json()),
-                    fetch(proxy + encodeURIComponent('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json')).then(r => r.json())
+                    fetch('https://services.swpc.noaa.gov/products/solar-wind/plasma-5-minute.json')
+                        .then(r => r.json())
+                        .catch(() => fetch(proxy + encodeURIComponent('https://services.swpc.noaa.gov/products/solar-wind/plasma-5-minute.json')).then(r => r.json())),
+                    fetch('https://services.swpc.noaa.gov/products/solar-wind/mag-5-minute.json')
+                        .then(r => r.json())
+                        .catch(() => fetch(proxy + encodeURIComponent('https://services.swpc.noaa.gov/products/solar-wind/mag-5-minute.json')).then(r => r.json())),
+                    fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json')
+                        .then(r => r.json())
+                        .catch(() => fetch(proxy + encodeURIComponent('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json')).then(r => r.json()))
                 ]);
+
                 if (p && p.length > 1) {
                     const l = p[p.length - 1];
                     S.dens = parseFloat(l[1]) || 5;
                     S.wind = parseFloat(l[2]) || 400;
                     S.temp = parseFloat(l[3]) || 100000;
+                    log(`✓ Плазма: ${S.wind.toFixed(0)} км/с`);
                 }
                 if (m && m.length > 1) {
                     const l = m[m.length - 1];
-                    S.bx = parseFloat(l[1]);
-                    S.by = parseFloat(l[2]);
-                    S.bz = parseFloat(l[3]);
-                    S.phi = parseFloat(l[5]);
-                    S.bt = parseFloat(l[6]);
+                    S.bx = parseFloat(l[1]) || 0;
+                    S.by = parseFloat(l[2]) || 0;
+                    S.bz = parseFloat(l[3]) || 0;
+                    S.phi = parseFloat(l[5]) || 0;
+                    S.bt = parseFloat(l[6]) || 5;
+                    log(`✓ Магнітне поле: BZ=${S.bz.toFixed(1)} nT`);
                 }
-                if (k && k.length > 1) S.kp = parseFloat(k[k.length - 1][1]) || 0;
+                if (k && k.length > 1) {
+                    S.kp = parseFloat(k[k.length - 1][1]) || 0;
+                    log(`✓ Kp індекс: ${S.kp}`);
+                }
+
                 S.convi = (((S.wind / 1000) + (S.kp / 9) + (Math.abs(S.bz) / 20)) / 3 * 100).toFixed(1);
 
                 const upH = (k, v) => {
@@ -581,7 +595,8 @@
                 upH('convi', S.convi);
                 updateUI();
             } catch (e) {
-                log("Втрата зв'язку");
+                log("⚠ Втрата зв'язку з NOAA");
+                console.error('Fetch error:', e);
             }
         }
 
