@@ -124,21 +124,6 @@
         .status-red {
             background: #f22;
             box-shadow: 0 0 10px #f22;
-            animation: alert-pulse 1s infinite;
-        }
-
-        @keyframes alert-pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-
-            50% {
-                opacity: 0.3;
-                transform: scale(1.2);
-            }
         }
 
         #heatmap {
@@ -295,6 +280,7 @@
             gap: 20px;
             align-items: center;
             justify-content: flex-start;
+            padding-top: 0;
             position: relative;
             z-index: 50;
         }
@@ -315,7 +301,7 @@
             height: 720px;
             z-index: 10;
             pointer-events: none;
-            opacity: 0.9;
+            opacity: 0.8;
         }
 
         canvas#viz-canvas,
@@ -324,6 +310,7 @@
             height: 100%;
         }
 
+        /* OVERLAYS */
         #alert-hub {
             position: fixed;
             top: 10px;
@@ -379,13 +366,12 @@
                 max-width: 450px;
             }
 
-            .viz-box {
-                height: 900px;
+            .right-hub {
+                padding-top: 0;
             }
 
-            .compass-box {
-                width: 450px;
-                height: 450px;
+            .viz-box {
+                height: 900px;
             }
         }
     </style>
@@ -490,36 +476,54 @@
         ];
 
         // ------------------------------------------------------------------
-        // RENDERING PIPELINES
+        // RENDERING PIPELINES - ОПТИМІЗОВАНО
         // ------------------------------------------------------------------
-        const bgC = document.getElementById('bg-layer'); const bgCtx = bgC.getContext('2d');
-        const vzC = document.getElementById('viz-canvas'); const vizCtx = vzC.getContext('2d');
-        const cpC = document.getElementById('compass-canvas'); const cpCtx = cpC.getContext('2d');
+        const bgC = document.getElementById('bg-layer');
+        const bgCtx = bgC.getContext('2d');
+        const vzC = document.getElementById('viz-canvas');
+        const vizCtx = vzC.getContext('2d');
+        const cpC = document.getElementById('compass-canvas');
+        const cpCtx = cpC.getContext('2d');
 
         function resize() {
             const ratio = window.devicePixelRatio || 1;
-            bgC.width = innerWidth * ratio; bgC.height = innerHeight * ratio;
-            vzC.width = 810 * ratio; vzC.height = 585 * ratio;
-            cpC.width = 720 * ratio; cpC.height = 720 * ratio;
-            bgCtx.scale(ratio, ratio); vizCtx.scale(ratio, ratio); cpCtx.scale(ratio, ratio);
+            bgC.width = innerWidth * ratio;
+            bgC.height = innerHeight * ratio;
+            vzC.width = 810 * ratio;
+            vzC.height = 585 * ratio;
+            cpC.width = 720 * ratio;
+            cpC.height = 720 * ratio;
+            bgCtx.scale(ratio, ratio);
+            vizCtx.scale(ratio, ratio);
+            cpCtx.scale(ratio, ratio);
         }
-        window.addEventListener('resize', resize); resize();
+        window.addEventListener('resize', resize);
+        resize();
 
-        // Optimized Starfield
-        const stars = [...Array(300)].map(() => ({
-            x: Math.random() * 2 - 1,
-            y: Math.random() * 2 - 1,
-            z: Math.random() * 2000,
+        // СПРОЩЕНІ ЗІРКИ - менше зірок, без складних обчислень
+        const stars = [...Array(150)].map(() => ({
+            x: Math.random() * innerWidth,
+            y: Math.random() * innerHeight,
             s: Math.random() * 1.5 + 0.5
         }));
 
+        // ------------------------------------------------------------------
+        // CORE FUNCTIONS
+        // ------------------------------------------------------------------
         let activeSolo = -1, curSpec = '0171';
 
-        function solo(i) { activeSolo = (activeSolo === i) ? -1 : i; log(`Соло синхр.: ${activeSolo === -1 ? 'ВИМК' : configs[i].l}`); }
+        function solo(i) {
+            activeSolo = (activeSolo === i) ? -1 : i;
+            log(`Соло синхр.: ${activeSolo === -1 ? 'ВИМК' : configs[i].l}`);
+        }
+
         function spec(c, btn) {
-            curSpec = c; document.querySelectorAll('.btn-lite').forEach(b => b.classList.remove('active')); btn.classList.add('active');
+            curSpec = c;
+            document.querySelectorAll('.btn-lite').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
             document.getElementById('sun-img').src = `https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_${c}.jpg?t=` + Date.now();
         }
+
         function zoom(delta) {
             sunZoom = Math.max(1.0, Math.min(8.0, sunZoom + delta));
             const img = document.getElementById('sun-img');
@@ -532,10 +536,13 @@
             }
             log(`Зум сонця: ${Math.round(sunZoom * 100)}%`);
         }
+
         function log(m) {
             const l = document.getElementById('sys-out');
-            const e = document.createElement('div'); e.innerText = `${new Date().toLocaleTimeString()} :: ${m}`;
-            l.prepend(e); if (l.childNodes.length > 15) l.removeChild(l.lastChild);
+            const e = document.createElement('div');
+            e.innerText = `${new Date().toLocaleTimeString()} :: ${m}`;
+            l.prepend(e);
+            if (l.childNodes.length > 15) l.removeChild(l.lastChild);
         }
 
         async function fetchAll() {
@@ -546,18 +553,36 @@
                     fetch(proxy + encodeURIComponent('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json')).then(r => r.json())
                 ]);
                 if (p && p.length > 1) {
-                    const l = p[p.length - 1]; S.dens = parseFloat(l[1]) || 5; S.wind = parseFloat(l[2]) || 400; S.temp = parseFloat(l[3]) || 100000;
+                    const l = p[p.length - 1];
+                    S.dens = parseFloat(l[1]) || 5;
+                    S.wind = parseFloat(l[2]) || 400;
+                    S.temp = parseFloat(l[3]) || 100000;
                 }
                 if (m && m.length > 1) {
-                    const l = m[m.length - 1]; S.bx = parseFloat(l[1]); S.by = parseFloat(l[2]); S.bz = parseFloat(l[3]); S.phi = parseFloat(l[5]); S.bt = parseFloat(l[6]);
+                    const l = m[m.length - 1];
+                    S.bx = parseFloat(l[1]);
+                    S.by = parseFloat(l[2]);
+                    S.bz = parseFloat(l[3]);
+                    S.phi = parseFloat(l[5]);
+                    S.bt = parseFloat(l[6]);
                 }
                 if (k && k.length > 1) S.kp = parseFloat(k[k.length - 1][1]) || 0;
                 S.convi = (((S.wind / 1000) + (S.kp / 9) + (Math.abs(S.bz) / 20)) / 3 * 100).toFixed(1);
 
-                const upH = (k, v) => { HIST[k].push(v); if (HIST[k].length > LIMIT) HIST[k].shift(); };
-                upH('wind', S.wind); upH('dens', S.dens); upH('bt', S.bt); upH('bz', S.bz); upH('kp', S.kp); upH('convi', S.convi);
+                const upH = (k, v) => {
+                    HIST[k].push(v);
+                    if (HIST[k].length > LIMIT) HIST[k].shift();
+                };
+                upH('wind', S.wind);
+                upH('dens', S.dens);
+                upH('bt', S.bt);
+                upH('bz', S.bz);
+                upH('kp', S.kp);
+                upH('convi', S.convi);
                 updateUI();
-            } catch (e) { log("Втрата зв'язку"); }
+            } catch (e) {
+                log("Втрата зв'язку");
+            }
         }
 
         function updateUI() {
@@ -595,54 +620,77 @@
             });
         }
 
-        function drawBackground(t) {
+        // СПРОЩЕНИЙ ФОН - статичні зірки без руху
+        function drawBackground() {
             bgCtx.fillStyle = '#000';
             bgCtx.fillRect(0, 0, innerWidth, innerHeight);
-            const cx = innerWidth / 2, cy = innerHeight / 2;
 
-            // Optimized Starfield
-            bgCtx.fillStyle = '#b4f0ff';
             stars.forEach(s => {
-                s.z -= 2;
-                if (s.z <= 0) s.z = 2000;
-                let k = 400 / s.z;
-                let px = s.x * k * innerWidth + cx, py = s.y * k * innerHeight + cy;
-                if (px < 0 || px > innerWidth || py < 0 || py > innerHeight) return;
-                bgCtx.globalAlpha = 1 - s.z / 2000;
-                bgCtx.fillRect(px, py, s.s, s.s);
+                bgCtx.fillStyle = `rgba(180,240,255,0.6)`;
+                bgCtx.beginPath();
+                bgCtx.arc(s.x, s.y, s.s, 0, 6.28);
+                bgCtx.fill();
             });
-            bgCtx.globalAlpha = 1;
         }
 
         function drawViz(t) {
             vizCtx.clearRect(0, 0, 810, 585);
 
             const drawG = (lbl, hist, x, y, cw, ch, col, max, thr) => {
-                vizCtx.save(); vizCtx.translate(x, y);
-                vizCtx.strokeStyle = 'rgba(0,180,255,0.1)'; vizCtx.lineWidth = 1;
-                for (let i = 0; i <= 3; i++) { vizCtx.beginPath(); vizCtx.moveTo(0, i * ch / 3); vizCtx.lineTo(cw, i * ch / 3); vizCtx.stroke(); }
+                vizCtx.save();
+                vizCtx.translate(x, y);
+                vizCtx.strokeStyle = 'rgba(0,180,255,0.15)';
+                vizCtx.lineWidth = 1;
+                for (let i = 0; i <= 3; i++) {
+                    vizCtx.beginPath();
+                    vizCtx.moveTo(0, i * ch / 3);
+                    vizCtx.lineTo(cw, i * ch / 3);
+                    vizCtx.stroke();
+                }
+                vizCtx.strokeStyle = 'rgba(0,180,255,0.05)';
+                for (let i = 0; i <= 4; i++) {
+                    vizCtx.beginPath();
+                    vizCtx.moveTo(i * cw / 4, 0);
+                    vizCtx.lineTo(i * cw / 4, ch);
+                    vizCtx.stroke();
+                }
 
                 if (hist.length > 0) {
                     const last = hist[hist.length - 1] || 0;
                     const isAlert = Math.abs(last) > thr;
                     vizCtx.beginPath();
                     hist.forEach((v, i) => {
-                        const gx = i * (cw / (LIMIT - 1)); const gy = ch - (Math.abs(v) / max) * ch;
+                        const gx = i * (cw / (LIMIT - 1));
+                        const gy = ch - (Math.abs(v) / max) * ch;
                         i === 0 ? vizCtx.moveTo(gx, gy) : vizCtx.lineTo(gx, gy);
                     });
-                    vizCtx.strokeStyle = isAlert ? '#f22' : col; vizCtx.lineWidth = 1.8; vizCtx.stroke();
+                    vizCtx.strokeStyle = isAlert ? '#f22' : col;
+                    vizCtx.lineWidth = 1.8;
+                    vizCtx.stroke();
 
-                    const endX = (hist.length - 1) * (cw / (LIMIT - 1));
-                    const endY = ch - (Math.abs(last) / max) * ch;
-                    vizCtx.beginPath(); vizCtx.arc(endX, endY, 2, 0, 6.28); vizCtx.fillStyle = '#fff'; vizCtx.fill();
-                    vizCtx.font = 'bold 8px Courier New'; vizCtx.fillText(parseFloat(last).toFixed(1), endX + 4, endY + 3);
+                    hist.forEach((v, i) => {
+                        if (i % 5 === 0 || i === hist.length - 1) {
+                            const gx = i * (cw / (LIMIT - 1));
+                            const gy = ch - (Math.abs(v) / max) * ch;
+                            vizCtx.beginPath();
+                            vizCtx.arc(gx, gy, 2, 0, 6.28);
+                            vizCtx.fillStyle = isAlert ? '#f22' : col;
+                            vizCtx.fill();
+                            if (i === hist.length - 1) {
+                                vizCtx.fillStyle = '#fff';
+                                vizCtx.font = 'bold 8px Courier New';
+                                vizCtx.fillText(parseFloat(v).toFixed(1), gx + 4, gy + 3);
+                            }
+                        }
+                    });
                 }
-                vizCtx.fillStyle = col; vizCtx.font = '8px Courier New'; vizCtx.fillText(lbl, 0, -6);
+                vizCtx.fillStyle = col;
+                vizCtx.font = '8px Courier New';
+                vizCtx.fillText(lbl, 0, -6);
                 vizCtx.restore();
             };
 
             const gw = 234, gh = 135, gapX = 270, gapY = 198;
-            // Full analytics labels restored
             drawG('АНАЛІТИКА.ШВИДКОСТІ', HIST.wind, 20, 60, gw, gh, '#0af', 1000, 650);
             drawG('АНАЛІТИКА.ПРОТОНІВ', HIST.dens, 20 + gapX, 60, gw, gh, '#ff0', 50, 15);
             drawG('АНАЛІТИКА.MAG_BT', HIST.bt, 20 + gapX * 2, 60, gw, gh, '#f05', 50, 18);
@@ -654,10 +702,10 @@
         function drawCompass(t) {
             cpCtx.clearRect(0, 0, 720, 720);
             const cx = 360, cy = 360;
-            const globalPulse = 1 + Math.sin(t * 1.5) * 0.01;
-            const radius = 288 * globalPulse;
+            const radius = 288;
             const chaos = S.convi / 100;
 
+            // --- REAL-TIME STATE ANALYZER ---
             let status = { label: "ШТИЛЬ_00", color: "#0f4", level: 1, desc: "МАГНІТОСФЕРА СТАБІЛЬНА" };
             if (S.kp >= 3 || S.wind > 450 || S.bz < -3) {
                 status = { label: "КВАНТОВИЙ_ДРЕЙФ", color: "#0af", level: 2, desc: "ПЕРЕХІДНИЙ ПОТІК ПЛАЗМИ" };
@@ -672,23 +720,27 @@
                 status = { label: "КРИТИЧНИЙ_ВИКИД", color: "#f0f", level: 5, desc: "ЕКСТРЕМАЛЬНИЙ РІВЕНЬ ЗАГРОЗИ" };
             }
 
-            if (status.level > 3) {
-                cpCtx.shadowBlur = 10;
-                cpCtx.shadowColor = status.color;
-            }
+            // --- СТАТИЧНІ КІЛЬЦЯ БЕЗ ОБЕРТАННЯ ---
+            for (let i = 1; i <= 6; i++) {
+                const r = (radius / 6) * i;
+                cpCtx.strokeStyle = status.level > 3 ? status.color : `rgba(0, 255, 255, ${0.04 + (i / 30)})`;
 
-            for (let i = 1; i <= 4; i++) {
-                const r = (radius / i);
-                cpCtx.save(); cpCtx.translate(cx, cy); cpCtx.rotate(i % 2 ? t * 0.05 : -t * 0.03);
-                cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.05 + (i / 40)})`;
-                cpCtx.setLineDash([10, 20]); cpCtx.beginPath(); cpCtx.arc(0, 0, (radius / 4) * i, 0, 6.28); cpCtx.stroke();
-                cpCtx.restore();
+                if (i % 2 === 0) {
+                    cpCtx.setLineDash([8, 20]);
+                    cpCtx.lineWidth = 2.5;
+                } else {
+                    cpCtx.setLineDash([30, 15]);
+                    cpCtx.lineWidth = 1;
+                }
+                cpCtx.beginPath();
+                cpCtx.arc(cx, cy, r, 0, Math.PI * 2);
+                cpCtx.stroke();
             }
             cpCtx.setLineDash([]);
 
-            // Full Telemetry Restored
+            // --- ANALYTIC SIDEBARS (STATE DATA) ---
             cpCtx.fillStyle = status.color;
-            cpCtx.font = 'bold 8px Courier New';
+            cpCtx.font = 'bold 8px Space Mono';
             cpCtx.textAlign = 'left';
             const telemetry = [
                 `SYST_PHASE: ${status.label}`,
@@ -699,44 +751,118 @@
             ];
             telemetry.forEach((txt, i) => cpCtx.fillText(`> ${txt}`, cx - radius - 50, cy - radius + 40 + i * 14));
 
+            // THREAT METER BAR
+            cpCtx.strokeStyle = 'rgba(255,255,255,0.1)';
+            cpCtx.strokeRect(cx - radius - 50, cy - radius + 110, 100, 4);
+            cpCtx.fillStyle = status.color;
+            cpCtx.fillRect(cx - radius - 50, cy - radius + 110, status.level * 20, 4);
+
+            // --- DATA POINTS ---
             const points = configs.map((c, i) => {
-                const angle = (i * Math.PI * 2 / 8) + t * 0.05;
-                const n = Math.min(1, Math.abs(S[c.k] || 0) / c.m);
+                const angle = (i * Math.PI * 2 / 8);
+                const val = S[c.k] || 0;
+                const n = Math.min(1, Math.abs(val) / c.m);
                 const r = (n * radius * 0.7) + (radius * 0.3);
-                return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r, color: c.c, norm: n, label: c.k.toUpperCase() };
+                return {
+                    x: cx + Math.cos(angle) * r,
+                    y: cy + Math.sin(angle) * r,
+                    color: c.c,
+                    norm: n,
+                    label: c.k.toUpperCase(),
+                    val: val
+                };
             });
 
+            // Energy Web
             cpCtx.beginPath();
             cpCtx.setLineDash([2, 4]);
-            cpCtx.strokeStyle = `rgba(0, 255, 255, ${0.15 + chaos * 0.4})`;
-            points.forEach((p, i) => { i === 0 ? cpCtx.moveTo(p.x, p.y) : cpCtx.lineTo(p.x, p.y); });
-            cpCtx.closePath(); cpCtx.stroke();
+            cpCtx.lineWidth = 1;
+            cpCtx.strokeStyle = status.level > 3 ? status.color : `rgba(0, 255, 255, ${0.15 + chaos * 0.4})`;
+            points.forEach((p, i) => {
+                i === 0 ? cpCtx.moveTo(p.x, p.y) : cpCtx.lineTo(p.x, p.y);
+            });
+            cpCtx.closePath();
+            cpCtx.stroke();
             cpCtx.setLineDash([]);
 
-            points.forEach(p => {
-                cpCtx.fillStyle = p.color;
-                cpCtx.beginPath(); cpCtx.arc(p.x, p.y, 3, 0, 6.28); cpCtx.fill();
-                cpCtx.fillStyle = '#fff'; cpCtx.font = 'bold 7px Courier New';
-                cpCtx.fillText(`[${p.label}]`, p.x + 8, p.y - 4);
+            // DATA NODES
+            points.forEach((p, i) => {
+                const s = 4 + (p.norm * 2);
+                cpCtx.strokeStyle = p.color;
+                cpCtx.lineWidth = 2;
+                cpCtx.beginPath();
+                cpCtx.moveTo(p.x - s, p.y);
+                cpCtx.lineTo(p.x + s, p.y);
+                cpCtx.moveTo(p.x, p.y - s);
+                cpCtx.lineTo(p.x, p.y + s);
+                cpCtx.stroke();
+
+                cpCtx.fillStyle = '#fff';
+                cpCtx.font = 'bold 7px Space Mono';
+                cpCtx.textAlign = 'left';
+                cpCtx.fillText(`[${p.label}]`, p.x + 8, p.y - 12);
+                cpCtx.fillText(`${Math.round(p.norm * 100)}%`, p.x + 8, p.y - 4);
+
+                if (p.norm > 0.8 || status.level >= 4) {
+                    cpCtx.strokeStyle = '#f22';
+                    const b = 15;
+                    cpCtx.strokeRect(p.x - b / 2, p.y - b / 2, b, b);
+                }
             });
 
-            cpCtx.shadowBlur = 0;
-            cpCtx.font = 'bold 11px Courier New'; cpCtx.textAlign = 'center';
+            // --- ALERT OVERLAY ---
+            if (status.level >= 4) {
+                cpCtx.fillStyle = '#f22';
+                cpCtx.font = 'bold 12px Space Mono';
+                cpCtx.textAlign = 'center';
+                cpCtx.fillText('!! УВАГА: КРИТИЧНЕ ЗБУДЖЕННЯ !!', cx, cy + radius + 40);
+            }
+
+            // HEADER INFO
+            cpCtx.fillStyle = status.color;
+            cpCtx.font = 'bold 11px Space Mono';
+            cpCtx.textAlign = 'center';
             cpCtx.fillText(`${status.label} // ${status.desc}`, cx, cy - radius - 60);
         }
+
+        // ОПТИМІЗОВАНИЙ LOOP - фон малюється раз, графіки рідше
+        let frameCount = 0;
+        let bgDrawn = false;
 
         function loop() {
             try {
                 const t = performance.now() * 0.001;
-                drawBackground(t); drawViz(t); drawCompass(t);
-                const now = new Date();
-                document.getElementById('clock-overlay').innerHTML = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}<br>ТЕРМІНАЛ АКТИВНИЙ: +${Math.floor((Date.now() - startTime) / 1000)}с`;
+
+                // Фон малюємо тільки один раз
+                if (!bgDrawn) {
+                    drawBackground();
+                    bgDrawn = true;
+                }
+
+                // Графіки оновлюємо кожен кадр
+                drawViz(t);
+
+                // Компас оновлюємо кожні 2 кадри
+                if (frameCount % 2 === 0) {
+                    drawCompass(t);
+                }
+
+                // Годинник оновлюємо кожні 30 кадрів (~0.5 сек)
+                if (frameCount % 30 === 0) {
+                    const now = new Date();
+                    document.getElementById('clock-overlay').innerHTML = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}<br>ТЕРМІНАЛ АКТИВНИЙ: +${Math.floor((Date.now() - startTime) / 1000)}с`;
+                }
+
+                frameCount++;
             } catch (e) { }
             requestAnimationFrame(loop);
         }
 
-        fetchAll(); setInterval(fetchAll, 5000);
-        setInterval(() => { document.getElementById('sun-img').src = `https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_${curSpec}.jpg?t=` + Date.now(); }, 600000);
+        fetchAll();
+        setInterval(fetchAll, 5000);
+        setInterval(() => {
+            document.getElementById('sun-img').src = `https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_${curSpec}.jpg?t=` + Date.now();
+        }, 600000);
         loop();
     </script>
 </body>
