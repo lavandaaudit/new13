@@ -413,14 +413,14 @@
 
                 <div class="sun-box">
                     <img id="sun-img" class="sun-disk"
-                        src="https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0171.jpg" alt="AIA">
+                        src="https://services.swpc.noaa.gov/images/animations/suvi/primary/171/latest.png" alt="AIA">
                 </div>
 
                 <div class="controls-row">
-                    <button class="btn-lite active" onclick="spec('0171', this)">171</button>
-                    <button class="btn-lite" onclick="spec('0193', this)">193</button>
-                    <button class="btn-lite" onclick="spec('0304', this)">304</button>
-                    <button class="btn-lite" onclick="spec('0131', this)">131</button>
+                    <button class="btn-lite active" onclick="spec('171', this)">171</button>
+                    <button class="btn-lite" onclick="spec('195', this)">193</button>
+                    <button class="btn-lite" onclick="spec('304', this)">304</button>
+                    <button class="btn-lite" onclick="spec('131', this)">131</button>
                     <span style="width:10px"></span>
                     <button class="btn-lite btn-zoom" onclick="zoom(0.2)">+</button>
                     <button class="btn-lite btn-zoom" onclick="zoom(-0.2)">-</button>
@@ -510,7 +510,7 @@
         // ------------------------------------------------------------------
         // CORE FUNCTIONS
         // ------------------------------------------------------------------
-        let activeSolo = -1, curSpec = '0171';
+        let activeSolo = -1, curSpec = '171';
 
         function solo(i) {
             activeSolo = (activeSolo === i) ? -1 : i;
@@ -521,7 +521,7 @@
             curSpec = c;
             document.querySelectorAll('.btn-lite').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            document.getElementById('sun-img').src = `https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_${c}.jpg?t=` + Date.now();
+            document.getElementById('sun-img').src = `https://services.swpc.noaa.gov/images/animations/suvi/primary/${c}/latest.png?t=` + Date.now();
         }
 
         function zoom(delta) {
@@ -876,7 +876,7 @@
         fetchAll();
         setInterval(fetchAll, 5000);
         setInterval(() => {
-            document.getElementById('sun-img').src = `https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_${curSpec}.jpg?t=` + Date.now();
+            document.getElementById('sun-img').src = `https://services.swpc.noaa.gov/images/animations/suvi/primary/${curSpec}/latest.png?t=` + Date.now();
         }, 600000);
         loop();
     </script>
