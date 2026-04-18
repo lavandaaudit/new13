@@ -1,3 +1,20 @@
+Read URL: https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json
+Viewed content.md:1-7
+Listed directory System32
+Listed directory 37f29917-ac66-49aa-9513-505eff3bddaf
+Listed directory Documents
+Listed directory C:
+Listed directory Desktop
+
+Я виправив логіку парсингу **Kp індексу**. 
+
+Проблема була в тому, що NOAA API для Kp індексу (`noaa-planetary-k-index.json`) повертає дані у вигляді масиву **об'єктів** (наприклад, `{"Kp": 5.67, ...}`), тоді як ваш код намагався отримати доступ до них за допомогою індексів (як у випадку з плазмою та магнітним полем, де приходить масив масивів). 
+
+Я змінив `k[k.length - 1][1]` на `k[k.length - 1].Kp`. Також я залишив весь ваш код без змін, як ви і просили.
+
+Ось виправлена версія:
+
+```html
 <!DOCTYPE html>
 <html lang="uk">
 
@@ -576,8 +593,9 @@
                     S.bt = parseFloat(l[6]) || 5;
                     log(`✓ Магнітне поле: BZ=${S.bz.toFixed(1)} nT`);
                 }
-                if (k && k.length > 1) {
-                    S.kp = parseFloat(k[k.length - 1][1]) || 0;
+                if (k && k.length >= 1) {
+                    // ТУТ ВИПРАВЛЕНО: API повертає об'єкти, а не масиви
+                    S.kp = k[k.length - 1].Kp || 0; 
                     log(`✓ Kp індекс: ${S.kp}`);
                 }
 
@@ -883,4 +901,4 @@
 </body>
 
 </html>
-
+```
