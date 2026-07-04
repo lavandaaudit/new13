@@ -1,20 +1,3 @@
-Read URL: https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json
-Viewed content.md:1-7
-Listed directory System32
-Listed directory 37f29917-ac66-49aa-9513-505eff3bddaf
-Listed directory Documents
-Listed directory C:
-Listed directory Desktop
-
-Я виправив логіку парсингу **Kp індексу**. 
-
-Проблема була в тому, що NOAA API для Kp індексу (`noaa-planetary-k-index.json`) повертає дані у вигляді масиву **об'єктів** (наприклад, `{"Kp": 5.67, ...}`), тоді як ваш код намагався отримати доступ до них за допомогою індексів (як у випадку з плазмою та магнітним полем, де приходить масив масивів). 
-
-Я змінив `k[k.length - 1][1]` на `k[k.length - 1].Kp`. Також я залишив весь ваш код без змін, як ви і просили.
-
-Ось виправлена версія:
-
-```html
 <!DOCTYPE html>
 <html lang="uk">
 
@@ -466,8 +449,6 @@ Listed directory Desktop
     <div id="clock-overlay">—</div>
 
     <script>
-        const proxy = 'https://corsproxy.io/?';
-
         // ------------------------------------------------------------------
         // STATE STORAGE
         // ------------------------------------------------------------------
@@ -493,7 +474,7 @@ Listed directory Desktop
         ];
 
         // ------------------------------------------------------------------
-        // RENDERING PIPELINES - ОПТИМІЗОВАНО
+        // RENDERING PIPELINES
         // ------------------------------------------------------------------
         const bgC = document.getElementById('bg-layer');
         const bgCtx = bgC.getContext('2d');
@@ -517,7 +498,6 @@ Listed directory Desktop
         window.addEventListener('resize', resize);
         resize();
 
-        // СПРОЩЕНІ ЗІРКИ - менше зірок, без складних обчислень
         const stars = [...Array(150)].map(() => ({
             x: Math.random() * innerWidth,
             y: Math.random() * innerHeight,
@@ -562,40 +542,47 @@ Listed directory Desktop
             if (l.childNodes.length > 15) l.removeChild(l.lastChild);
         }
 
+        /**
+         * Знаходить перший запис з active===true (основне джерело RTSW),
+         * або якщо такого нема — перший запис масиву.
+         */
+        function pickActive(arr) {
+            if (!Array.isArray(arr) || arr.length === 0) return null;
+            return arr.find(r => r.active === true) || arr[0];
+        }
+
         async function fetchAll() {
             try {
-                // Спроба прямого запиту до NOAA API
-                const [p, m, k] = await Promise.all([
-                    fetch('https://services.swpc.noaa.gov/products/solar-wind/plasma-5-minute.json')
-                        .then(r => r.json())
-                        .catch(() => fetch(proxy + encodeURIComponent('https://services.swpc.noaa.gov/products/solar-wind/plasma-5-minute.json')).then(r => r.json())),
-                    fetch('https://services.swpc.noaa.gov/products/solar-wind/mag-5-minute.json')
-                        .then(r => r.json())
-                        .catch(() => fetch(proxy + encodeURIComponent('https://services.swpc.noaa.gov/products/solar-wind/mag-5-minute.json')).then(r => r.json())),
-                    fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json')
-                        .then(r => r.json())
-                        .catch(() => fetch(proxy + encodeURIComponent('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json')).then(r => r.json()))
+                // ── Нові RTSW-ендпоінти (замість видалених plasma/mag -5-minute.json) ──
+                const [windData, magData, kpData] = await Promise.all([
+                    fetch('https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json').then(r => r.json()),
+                    fetch('https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json').then(r => r.json()),
+                    fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json').then(r => r.json())
                 ]);
 
-                if (p && p.length > 1) {
-                    const l = p[p.length - 1];
-                    S.dens = parseFloat(l[1]) || 5;
-                    S.wind = parseFloat(l[2]) || 400;
-                    S.temp = parseFloat(l[3]) || 100000;
+                // ── Плазма: іменовані поля об'єкта ──
+                const w = pickActive(windData);
+                if (w) {
+                    S.dens = parseFloat(w.proton_density)     || 5;
+                    S.wind = parseFloat(w.proton_speed)       || 400;
+                    S.temp = parseFloat(w.proton_temperature) || 100000;
                     log(`✓ Плазма: ${S.wind.toFixed(0)} км/с`);
                 }
-                if (m && m.length > 1) {
-                    const l = m[m.length - 1];
-                    S.bx = parseFloat(l[1]) || 0;
-                    S.by = parseFloat(l[2]) || 0;
-                    S.bz = parseFloat(l[3]) || 0;
-                    S.phi = parseFloat(l[5]) || 0;
-                    S.bt = parseFloat(l[6]) || 5;
+
+                // ── Магнітне поле: іменовані поля obj (GSM-система) ──
+                const m = pickActive(magData);
+                if (m) {
+                    S.bx  = parseFloat(m.bx_gsm)  || 0;
+                    S.by  = parseFloat(m.by_gsm)  || 0;
+                    S.bz  = parseFloat(m.bz_gsm)  || 0;
+                    S.phi = parseFloat(m.phi_gsm) || 0;
+                    S.bt  = parseFloat(m.bt)      || 5;
                     log(`✓ Магнітне поле: BZ=${S.bz.toFixed(1)} nT`);
                 }
-                if (k && k.length >= 1) {
-                    // ТУТ ВИПРАВЛЕНО: API повертає об'єкти, а не масиви
-                    S.kp = k[k.length - 1].Kp || 0; 
+
+                // ── Kp: масив об'єктів з полем Kp ──
+                if (kpData && kpData.length >= 1) {
+                    S.kp = parseFloat(kpData[kpData.length - 1].Kp) || 0;
                     log(`✓ Kp індекс: ${S.kp}`);
                 }
 
@@ -653,7 +640,6 @@ Listed directory Desktop
             });
         }
 
-        // СПРОЩЕНИЙ ФОН - статичні зірки без руху
         function drawBackground() {
             bgCtx.fillStyle = '#000';
             bgCtx.fillRect(0, 0, innerWidth, innerHeight);
@@ -738,7 +724,6 @@ Listed directory Desktop
             const radius = 288;
             const chaos = S.convi / 100;
 
-            // --- REAL-TIME STATE ANALYZER ---
             let status = { label: "ШТИЛЬ_00", color: "#0f4", level: 1, desc: "МАГНІТОСФЕРА СТАБІЛЬНА" };
             if (S.kp >= 3 || S.wind > 450 || S.bz < -3) {
                 status = { label: "КВАНТОВИЙ_ДРЕЙФ", color: "#0af", level: 2, desc: "ПЕРЕХІДНИЙ ПОТІК ПЛАЗМИ" };
@@ -753,7 +738,6 @@ Listed directory Desktop
                 status = { label: "КРИТИЧНИЙ_ВИКИД", color: "#f0f", level: 5, desc: "ЕКСТРЕМАЛЬНИЙ РІВЕНЬ ЗАГРОЗИ" };
             }
 
-            // --- СТАТИЧНІ КІЛЬЦЯ БЕЗ ОБЕРТАННЯ ---
             for (let i = 1; i <= 6; i++) {
                 const r = (radius / 6) * i;
                 cpCtx.strokeStyle = status.level > 3 ? status.color : `rgba(0, 255, 255, ${0.04 + (i / 30)})`;
@@ -771,7 +755,6 @@ Listed directory Desktop
             }
             cpCtx.setLineDash([]);
 
-            // --- ANALYTIC SIDEBARS (STATE DATA) ---
             cpCtx.fillStyle = status.color;
             cpCtx.font = 'bold 8px Space Mono';
             cpCtx.textAlign = 'left';
@@ -784,13 +767,11 @@ Listed directory Desktop
             ];
             telemetry.forEach((txt, i) => cpCtx.fillText(`> ${txt}`, cx - radius - 50, cy - radius + 40 + i * 14));
 
-            // THREAT METER BAR
             cpCtx.strokeStyle = 'rgba(255,255,255,0.1)';
             cpCtx.strokeRect(cx - radius - 50, cy - radius + 110, 100, 4);
             cpCtx.fillStyle = status.color;
             cpCtx.fillRect(cx - radius - 50, cy - radius + 110, status.level * 20, 4);
 
-            // --- DATA POINTS ---
             const points = configs.map((c, i) => {
                 const angle = (i * Math.PI * 2 / 8);
                 const val = S[c.k] || 0;
@@ -806,7 +787,6 @@ Listed directory Desktop
                 };
             });
 
-            // Energy Web
             cpCtx.beginPath();
             cpCtx.setLineDash([2, 4]);
             cpCtx.lineWidth = 1;
@@ -818,7 +798,6 @@ Listed directory Desktop
             cpCtx.stroke();
             cpCtx.setLineDash([]);
 
-            // DATA NODES
             points.forEach((p, i) => {
                 const s = 4 + (p.norm * 2);
                 cpCtx.strokeStyle = p.color;
@@ -843,7 +822,6 @@ Listed directory Desktop
                 }
             });
 
-            // --- ALERT OVERLAY ---
             if (status.level >= 4) {
                 cpCtx.fillStyle = '#f22';
                 cpCtx.font = 'bold 12px Space Mono';
@@ -851,14 +829,12 @@ Listed directory Desktop
                 cpCtx.fillText('!! УВАГА: КРИТИЧНЕ ЗБУДЖЕННЯ !!', cx, cy + radius + 40);
             }
 
-            // HEADER INFO
             cpCtx.fillStyle = status.color;
             cpCtx.font = 'bold 11px Space Mono';
             cpCtx.textAlign = 'center';
             cpCtx.fillText(`${status.label} // ${status.desc}`, cx, cy - radius - 60);
         }
 
-        // ОПТИМІЗОВАНИЙ LOOP - фон малюється раз, графіки рідше
         let frameCount = 0;
         let bgDrawn = false;
 
@@ -866,21 +842,17 @@ Listed directory Desktop
             try {
                 const t = performance.now() * 0.001;
 
-                // Фон малюємо тільки один раз
                 if (!bgDrawn) {
                     drawBackground();
                     bgDrawn = true;
                 }
 
-                // Графіки оновлюємо кожен кадр
                 drawViz(t);
 
-                // Компас оновлюємо кожні 2 кадри
                 if (frameCount % 2 === 0) {
                     drawCompass(t);
                 }
 
-                // Годинник оновлюємо кожні 30 кадрів (~0.5 сек)
                 if (frameCount % 30 === 0) {
                     const now = new Date();
                     document.getElementById('clock-overlay').innerHTML = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}<br>ТЕРМІНАЛ АКТИВНИЙ: +${Math.floor((Date.now() - startTime) / 1000)}с`;
@@ -901,4 +873,3 @@ Listed directory Desktop
 </body>
 
 </html>
-```
